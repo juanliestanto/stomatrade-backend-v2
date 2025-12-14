@@ -78,7 +78,7 @@ export class ProjectDetailResponseDto {
     description: 'Number of unique investors',
     example: 12,
   })
-  totalInvestors: number;
+  investors: number;
 
   @ApiProperty({
     description: 'Project status',
