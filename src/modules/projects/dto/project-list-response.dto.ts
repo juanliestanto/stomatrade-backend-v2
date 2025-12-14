@@ -29,7 +29,7 @@ export class ProjectListItemDto {
     description: 'Number of unique investors',
     example: 15,
   })
-  jumlahInvestors: number;
+  investors: number;
 
   @ApiProperty({
     description: 'Profit margin percentage',
