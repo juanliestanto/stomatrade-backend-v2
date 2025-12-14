@@ -24,6 +24,7 @@ import { PortfoliosModule } from './modules/portfolios/portfolios.module';
 import { ProfitsModule } from './modules/profits/profits.module';
 import { CronModule } from './modules/cron/cron.module';
 import { RefundsModule } from './modules/refunds/refunds.module';
+import { UserDashboardModule } from './modules/user-dashboard/user-dashboard.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { RefundsModule } from './modules/refunds/refunds.module';
     ProfitsModule,
     CronModule,
     RefundsModule,
+    UserDashboardModule,
   ],
   controllers: [AppController],
   providers: [

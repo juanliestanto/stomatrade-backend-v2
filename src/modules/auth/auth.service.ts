@@ -131,8 +131,8 @@ export class AuthService {
     const message = dto.message!;
 
     try {
-      const timestampStr = message.substring(19); 
-      const timestamp = new Date(timestampStr).getTime();
+      const timestampStr = message.substring(message.lastIndexOf(' ') + 1);
+      const timestamp = Date.parse(timestampStr);
       
       if (isNaN(timestamp)) {
         invalidReason = 'Invalid timestamp format in message';
@@ -359,4 +359,4 @@ export class AuthService {
       return null;
     }
   }
-}
+}

@@ -25,6 +25,8 @@ import {
   ProjectResponseDto,
   PaginatedProjectResponseDto,
 } from './dto/project-response.dto';
+import { ProjectListResponseDto } from './dto/project-list-response.dto';
+import { ProjectDetailResponseDto } from './dto/project-detail-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
@@ -61,6 +63,33 @@ export class ProjectsController {
   })
   create(@Body() createProjectDto: CreateProjectDto): Promise<ProjectResponseDto> {
     return this.projectsService.create(createProjectDto);
+  }
+
+  @Public()
+  @Get('ongoing')
+  @ApiOperation({
+    summary: 'Get ongoing projects (Public)',
+    description: 'Retrieve list of active ongoing projects available for investment',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number (default: 1)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Items per page (default: 10)',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Ongoing projects retrieved successfully',
+    type: ProjectListResponseDto,
+  })
+  findOngoingProjects(@Query() pagination: PaginationDto): Promise<ProjectListResponseDto> {
+    return this.projectsService.findOngoingProjects(pagination);
   }
 
   @Public()
@@ -136,6 +165,30 @@ export class ProjectsController {
     @Query() pagination: PaginationDto,
   ): Promise<PaginatedProjectResponseDto> {
     return this.projectsService.findByLand(landId, pagination);
+  }
+
+  @Public()
+  @Get(':id/detail')
+  @ApiOperation({
+    summary: 'Get detailed project information (Public)',
+    description: 'Retrieve comprehensive project details including funding status, investors, and dates',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Project UUID',
+    example: 'cc0e8400-e29b-41d4-a716-446655440007',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Project detail retrieved successfully',
+    type: ProjectDetailResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Project not found',
+  })
+  getProjectDetail(@Param('id', ParseUUIDPipe) id: string): Promise<ProjectDetailResponseDto> {
+    return this.projectsService.getProjectDetail(id);
   }
 
   @Get(':id')

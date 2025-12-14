@@ -54,6 +54,7 @@ model User {
   id            String   @id @default(uuid())
   walletAddress String   @unique
   role          ROLES
+  balance       String   @default("0")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   deleted       Boolean  @default(false)
@@ -177,6 +178,7 @@ model Project {
   volumeDecimal     Int                @default(18)
   profitShare       Int?
   sendDate          DateTime
+  status            PROJECT_STATUS     @default(ACTIVE)
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   deleted           Boolean            @default(false)
