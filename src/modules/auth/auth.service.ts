@@ -49,12 +49,16 @@ export class AuthService {
     if (privyAppId && privyAppSecret) {
       try {
         this.privyClient = new PrivyClient(privyAppId, privyAppSecret);
+        this.logger.log('✅ Privy client initialized successfully');
       } catch (error) {
-        throw error;
+        this.logger.error('❌ Failed to initialize Privy client - Privy wallet auth will not work', error);
+        this.logger.error('Privy embedded wallet authentication will be REJECTED (fail-closed)');
       }
     } else {
-      if (!privyAppId) this.logger.error('  - PRIVY_APP_ID is missing or empty');
-      if (!privyAppSecret) this.logger.error('  - PRIVY_APP_SECRET is missing or empty');
+      this.logger.warn('⚠️ Privy credentials not configured');
+      if (!privyAppId) this.logger.warn('  - PRIVY_APP_ID is missing');
+      if (!privyAppSecret) this.logger.warn('  - PRIVY_APP_SECRET is missing');
+      this.logger.warn('Privy embedded wallet authentication will be REJECTED (fail-closed)');
     }
   }
 
