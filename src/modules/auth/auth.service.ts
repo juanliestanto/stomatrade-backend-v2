@@ -34,7 +34,7 @@ export class AuthService {
   
   private nonceStore: Map<string, { nonce: string; expiresAt: Date }> = new Map();
 
-  private readonly SIGNATURE_EXPIRY_MS = 60000;
+  private readonly SIGNATURE_EXPIRY_MS = 5 * 60 * 1000;
 
   constructor(
     private readonly prisma: PrismaService,
