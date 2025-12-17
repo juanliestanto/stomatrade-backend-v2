@@ -131,14 +131,23 @@ export class AuthService {
     const message = dto.message!;
 
     try {
-      const timestampStr = message.substring(message.lastIndexOf(' ') + 1);
-      const timestamp = Date.parse(timestampStr);
-      
-      if (isNaN(timestamp)) {
-        invalidReason = 'Invalid timestamp format in message';
-      } else if (Date.now() - timestamp > this.SIGNATURE_EXPIRY_MS) {
-        invalidReason = 'Signature expired';
+      const match = message.match(
+        /\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}/
+      );
+
+      if (!match) {
+        invalidReason = 'Timestamp not found in message';
+      } else {
+        const iso = match[0].replace(' ', 'T') + '+07:00';
+        const timestamp = Date.parse(iso);
+
+        if (isNaN(timestamp)) {
+          invalidReason = 'Invalid timestamp format in message';
+        } else if (Date.now() - timestamp > this.SIGNATURE_EXPIRY_MS) {
+          invalidReason = 'Signature expired';
+        }
       }
+
     } catch {
       invalidReason = 'Invalid message format';
     }
