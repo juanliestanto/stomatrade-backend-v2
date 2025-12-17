@@ -8,6 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
+import { PrivyClient } from '@privy-io/server-auth';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RequestNonceDto } from './dto/request-nonce.dto';
 import { VerifySignatureDto } from './dto/verify-signature.dto';
@@ -31,16 +32,31 @@ export interface AuthResponse {
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  
+  private readonly privyClient: PrivyClient;
+
   private nonceStore: Map<string, { nonce: string; expiresAt: Date }> = new Map();
 
-  private readonly SIGNATURE_EXPIRY_MS = 60000;
+  private readonly SIGNATURE_EXPIRY_MS = 5 * 60 * 1000;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    const privyAppId = this.configService.get<string>('PRIVY_APP_ID');
+    const privyAppSecret = this.configService.get<string>('PRIVY_APP_SECRET');
+
+    if (privyAppId && privyAppSecret) {
+      try {
+        this.privyClient = new PrivyClient(privyAppId, privyAppSecret);
+      } catch (error) {
+        throw error;
+      }
+    } else {
+      if (!privyAppId) this.logger.error('  - PRIVY_APP_ID is missing or empty');
+      if (!privyAppSecret) this.logger.error('  - PRIVY_APP_SECRET is missing or empty');
+    }
+  }
 
   async requestNonce(dto: RequestNonceDto): Promise<{ nonce: string; message: string }> {
     const walletAddress = dto.walletAddress.toLowerCase();
@@ -102,7 +118,6 @@ export class AuthService {
           role: 'INVESTOR',
         },
       });
-      this.logger.log(`New user created via wallet auth: ${walletAddress}`);
     }
 
     const payload: JwtPayload = {
@@ -112,8 +127,6 @@ export class AuthService {
     };
 
     const accessToken = this.jwtService.sign(payload);
-
-    this.logger.log(`User authenticated: ${walletAddress}`);
 
     return {
       accessToken,
@@ -156,26 +169,37 @@ export class AuthService {
       return invalidReason;
     }
 
-    if (dto.signature.length > 1000) {
-      
+    const isSmartContract = await this.isContractAddress(walletAddress);
+
+    if (isSmartContract) {
       const isValid = await this.verifySmartWalletSignature(
         message,
         dto.signature,
         walletAddress,
       );
-      
+
       if (!isValid) {
         invalidReason = 'Invalid smart wallet signature';
       }
     } else {
-      
       try {
         const recoveredAddress = ethers.verifyMessage(message, dto.signature);
+
         if (walletAddress !== recoveredAddress.toLowerCase()) {
-          invalidReason = 'Invalid signer';
+          this.logger.warn(`Address mismatch - checking if Privy embedded wallet`);
+
+          const isPrivyWallet = await this.verifyPrivyEmbeddedWallet(
+            walletAddress,
+            message,
+            dto.signature,
+            recoveredAddress,
+          );
+
+          if (!isPrivyWallet) {
+            invalidReason = 'Invalid signer';
+          } 
         }
       } catch (error) {
-        this.logger.error('Signature verification error', error);
         invalidReason = 'Signature verification failed';
       }
     }
@@ -203,7 +227,6 @@ export class AuthService {
           role: 'INVESTOR',
         },
       });
-      this.logger.log(`New user created via wallet login: ${walletAddress}`);
     }
 
     const payload: JwtPayload = {
@@ -214,8 +237,6 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign(payload);
 
-    this.logger.log(`User logged in via wallet: ${walletAddress}`);
-
     return {
       accessToken,
       user: {
@@ -224,6 +245,60 @@ export class AuthService {
         role: user.role,
       },
     };
+  }
+
+  private async isContractAddress(address: string): Promise<boolean> {
+    try {
+      const rpcUrl = this.configService.get<string>('BLOCKCHAIN_RPC_URL');
+      if (!rpcUrl) {
+        return false;
+      }
+
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      const code = await provider.getCode(address);
+
+      return code !== '0x';
+    } catch (error) {
+      return false;
+    }
+  }
+
+  private async verifyPrivyEmbeddedWallet(
+    expectedWallet: string,
+    message: string,
+    signature: string,
+    recoveredAddress: string,
+  ): Promise<boolean> {
+    try {
+      if (!this.privyClient) {
+        return false; 
+      }
+
+      try {
+        const user = await this.privyClient.getUserByWalletAddress(expectedWallet);
+
+        if (!user) {
+          return false; 
+        }
+
+        const embeddedWallet = user.linkedAccounts.find(
+          (account) =>
+            account.type === 'wallet' &&
+            account.walletClientType === 'privy' &&
+            account.address.toLowerCase() === expectedWallet.toLowerCase()
+        );
+
+        if (embeddedWallet) {
+          return true;
+        } else {
+          return false;
+        }
+      } catch (privyError) {
+        return false; 
+      }
+    } catch (error) {
+      return false;
+    }
   }
 
   private async verifySmartWalletSignature(
@@ -237,7 +312,6 @@ export class AuthService {
       
       const rpcUrl = this.configService.get<string>('BLOCKCHAIN_RPC_URL');
       if (!rpcUrl) {
-        this.logger.error('BLOCKCHAIN_RPC_URL not configured for smart wallet verification');
         return false;
       }
 
@@ -285,8 +359,6 @@ export class AuthService {
     };
 
     const accessToken = this.jwtService.sign(payload);
-
-    this.logger.log(`User registered: ${walletAddress} with role ${dto.role}`);
 
     return {
       accessToken,
