@@ -62,12 +62,17 @@ export class AuthService {
     // If previous initialization failed, don't retry
     if (this.privyInitError) {
       this.logger.error('Privy initialization previously failed, rejecting request');
+      this.logger.error(`Previous error: ${this.privyInitError.message}`);
       return null;
     }
 
     try {
       const privyAppId = this.configService.get<string>('PRIVY_APP_ID');
       const privyAppSecret = this.configService.get<string>('PRIVY_APP_SECRET');
+
+      // Enhanced logging for debugging
+      this.logger.log(`[Privy Init] APP_ID configured: ${!!privyAppId} (${privyAppId ? `${privyAppId.substring(0, 10)}...` : 'missing'})`);
+      this.logger.log(`[Privy Init] APP_SECRET configured: ${!!privyAppSecret} (${privyAppSecret ? 'exists' : 'missing'})`);
 
       if (!privyAppId || !privyAppSecret) {
         this.logger.warn('⚠️ Privy credentials not configured - rejecting Privy wallet auth');
@@ -76,14 +81,20 @@ export class AuthService {
       }
 
       // Lazy load the PrivyClient module
+      this.logger.log('[Privy Init] Attempting to import @privy-io/server-auth...');
       const { PrivyClient } = await import('@privy-io/server-auth');
+      this.logger.log('[Privy Init] Import successful, creating client instance...');
+
       this.privyClient = new PrivyClient(privyAppId, privyAppSecret);
       this.privyInitialized = true;
       this.logger.log('✅ Privy client lazy-loaded successfully');
 
       return this.privyClient;
     } catch (error) {
-      this.logger.error('❌ Failed to lazy-load Privy client', error);
+      this.logger.error('❌ Failed to lazy-load Privy client');
+      this.logger.error(`Error name: ${error?.name}`);
+      this.logger.error(`Error message: ${error?.message}`);
+      this.logger.error(`Error stack: ${error?.stack}`);
       this.privyInitError = error as Error;
       this.privyInitialized = true;
       return null;
