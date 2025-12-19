@@ -27,7 +27,7 @@
       "maxDuration": 30
     }
   },
-  "installCommand": "pnpm install --shamefully-hoist",
+  "installCommand": "pnpm install",
   "buildCommand": "pnpm run vercel-build",
   "outputDirectory": "dist"
 }

@@ -1,3 +1,2 @@
-shamefully-hoist=true
-public-hoist-pattern[]=@privy-io/*
-public-hoist-pattern[]=@hpke/*
+node-linker=hoisted
+shamefully-hoist=false

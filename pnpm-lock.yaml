@@ -8,6 +8,15 @@ importers:
 
   .:
     dependencies:
+      '@hpke/chacha20poly1305':
+        specifier: 1.7.1
+        version: 1.7.1
+      '@hpke/common':
+        specifier: 1.7.3
+        version: 1.7.3
+      '@hpke/core':
+        specifier: 1.7.5
+        version: 1.7.5
       '@nestjs/common':
         specifier: ^11.0.1
         version: 11.1.9(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -417,6 +426,10 @@ packages:
 
   '@hpke/chacha20poly1305@1.7.1':
     resolution: {integrity: sha512-Zp8IwRIkdCucu877wCNqDp3B8yOhAnAah/YDDkO94pPr/KKV7IGnBbpwIjDB3BsAySWBMrhhdE0JKYw3N4FCag==}
+    engines: {node: '>=16.0.0'}
+
+  '@hpke/common@1.7.3':
+    resolution: {integrity: sha512-6wbbjlOPWZb2MnBETFNJRMcnEcB8jXMnjepGUs8412xEQX2Prds1n1yibvaxwUmQiKsHvjkGX+vTlWjqiiSiKw==}
     engines: {node: '>=16.0.0'}
 
   '@hpke/common@1.8.1':
@@ -3996,6 +4009,8 @@ snapshots:
   '@hpke/chacha20poly1305@1.7.1':
     dependencies:
       '@hpke/common': 1.8.1
+
+  '@hpke/common@1.7.3': {}
 
   '@hpke/common@1.8.1': {}
 

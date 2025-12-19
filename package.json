@@ -25,7 +25,15 @@
     "prisma:reset": "prisma migrate reset",
     "prisma:seed": "ts-node prisma/seed.ts"
   },
+  "pnpm": {
+    "peerDependencyRules": {
+      "ignoreMissing": ["webpack"]
+    }
+  },
   "dependencies": {
+    "@hpke/chacha20poly1305": "1.7.1",
+    "@hpke/common": "1.7.3",
+    "@hpke/core": "1.7.5",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
