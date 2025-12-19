@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@hpke/common': 1.7.3
+
 importers:
 
   .:
@@ -430,10 +433,6 @@ packages:
 
   '@hpke/common@1.7.3':
     resolution: {integrity: sha512-6wbbjlOPWZb2MnBETFNJRMcnEcB8jXMnjepGUs8412xEQX2Prds1n1yibvaxwUmQiKsHvjkGX+vTlWjqiiSiKw==}
-    engines: {node: '>=16.0.0'}
-
-  '@hpke/common@1.8.1':
-    resolution: {integrity: sha512-PSI4QSxH8XDli0TqAsWycVfrLLCM/bBe+hVlJwtuJJiKIvCaFS3CXX/WtRfJceLJye9NHc2J7GvHVCY9B1BEbA==}
     engines: {node: '>=16.0.0'}
 
   '@hpke/core@1.7.5':
@@ -4008,15 +4007,13 @@ snapshots:
 
   '@hpke/chacha20poly1305@1.7.1':
     dependencies:
-      '@hpke/common': 1.8.1
+      '@hpke/common': 1.7.3
 
   '@hpke/common@1.7.3': {}
 
-  '@hpke/common@1.8.1': {}
-
   '@hpke/core@1.7.5':
     dependencies:
-      '@hpke/common': 1.8.1
+      '@hpke/common': 1.7.3
 
   '@humanfs/core@0.19.1': {}
 

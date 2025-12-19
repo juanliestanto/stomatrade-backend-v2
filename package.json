@@ -28,6 +28,9 @@
   "pnpm": {
     "peerDependencyRules": {
       "ignoreMissing": ["webpack"]
+    },
+    "overrides": {
+      "@hpke/common": "1.7.3"
     }
   },
   "dependencies": {
