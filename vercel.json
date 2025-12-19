@@ -9,10 +9,9 @@
           "dist/**",
           "prisma/**",
           "node_modules/@prisma/**",
-          "node_modules/.prisma/**",
-          "node_modules/@privy-io/**",
-          "node_modules/@hpke/**"
-        ]
+          "node_modules/.prisma/**"
+        ],
+        "bundle": false
       }
     }
   ],
