@@ -4,7 +4,6 @@ node_modules
 .env.test
 coverage
 .pnpm-store
-dist
 .git
 .gitignore
 README.md
@@ -12,4 +11,5 @@ README.md
 test
 .prettierrc
 .eslintrc.js
-tsconfig.build.tsbuildspec.json
+tsconfig.build.json
+buildspec.json
