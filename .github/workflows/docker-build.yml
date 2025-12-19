@@ -10,28 +10,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa_stomatrade
-          chmod 600 ~/.ssh/id_rsa_stomatrade
-          ssh-keyscan -H ${{ secrets.LOGIN_VPS }} >> ~/.ssh/known_hosts
-
-      - name: Deploy via SSH
-        run: |
-          ssh -i ~/.ssh/id_rsa_stomatrade -o StrictHostKeyChecking=no ${{ secrets.LOGIN_VPS }} "
-            cd ~/app/stomatrade-backend &&
-            git pull origin main &&
-            docker stop stomatrade_backend || true &&
-            docker rm stomatrade_backend || true &&
-            docker build -t stomatrade_backend:latest . &&
+      - name: SSH and deploy to SERVER
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/app/stomatrade-backend
+            git pull origin main
+            docker stop stomatrade_backend || true
+            docker rm stomatrade_backend || true
+            docker build -t stomatrade_backend:latest .
             docker run -d \
               --name stomatrade_backend \
               -p 3000:3000 \
               --env-file .env \
-              stomatrade_backend:latest &&
+              stomatrade_backend:latest
             docker image prune -f
-          "
