@@ -53,6 +53,7 @@
 | Submissions (farmer/project) | - | Submit: Collector/Staff/Admin; Approve/Reject: Admin |
 | Refunds | - | Mark refundable: Admin; Claim/list: auth |
 | Notifications | - | Channels: Admin/Staff; Tokens: auth; Create notification: Staff/Admin |
+| Analytics | - | All endpoints: Admin only (projects/investors/users growth) |
 
 ### Swagger Usage
 - Buka `/api`, jalankan `/auth/verify`, salin `accessToken`, klik **Authorize** dengan scheme `JWT-auth`, lalu tes endpoint lain.
@@ -1707,12 +1708,10 @@ http://localhost:3000/api
 Migrated from Lisk Sepolia Testnet to **Mantle Sepolia Testnet** with completely new smart contract architecture.
 
 **Old Contract (Lisk):**
-- Address: (Previous Lisk address)
 - Chain ID: 4202
 - RPC: https://rpc.sepolia-api.lisk.com
 
 **New Contract (Mantle):**
-- Address: `0x08A2cefa99A8848cD3aC34620f49F115587dcE28`
 - Chain ID: 5001
 - RPC: https://rpc.sepolia.mantle.xyz
 
@@ -2075,6 +2074,297 @@ npx ts-node prisma/seed-investor-comprehensive.ts
 | Tests Fixed | 4 failed → 158 passing |
 | Files Modified | 9 |
 | New Scripts Created | 1 (comprehensive investor seed) |
+
+---
+
+### Version 1.7.0 - Analytics & Growth Statistics (December 2025)
+
+#### 🆕 New Module: Analytics (Updated with Advanced Features)
+
+**Analytics Module** (`src/modules/analytics/`)
+
+Menyediakan 3 API endpoints untuk growth statistics dengan filter period (daily, weekly, monthly, yearly), dengan support untuk custom limit dan date range untuk monitoring dashboard admin.
+
+| File | Description |
+|------|-------------|
+| `analytics.module.ts` | Module configuration |
+| `analytics.service.ts` | Service dengan growth calculation logic + performance optimization |
+| `analytics.controller.ts` | Controller dengan 3 endpoints (Admin only) |
+| `dto/analytics-request.dto.ts` | Request DTO dengan PeriodType, limit, startDate, endDate |
+| `dto/analytics-response.dto.ts` | Response DTOs dengan metadata (dataPoints, appliedLimit, dateRange) |
+
+**Analytics Endpoints:**
+```
+GET   /analytics/projects/growth?period=monthly&limit=6   - Project growth statistics
+GET   /analytics/investors/growth?period=weekly&limit=12  - Investor growth statistics
+GET   /analytics/users/growth?period=daily&startDate=2025-12-01&endDate=2025-12-31 - User growth statistics
+```
+
+**Request Parameters:**
+| Parameter | Type | Required | Description | Example |
+|-----------|------|----------|-------------|---------|
+| `period` | enum | ✅ Yes | Period type: daily, weekly, monthly, yearly | `monthly` |
+| `limit` | number | ❌ No | Override default limit (1-365) | `7` |
+| `startDate` | string | ❌ No | Custom start date (YYYY-MM-DD) | `2025-12-01` |
+| `endDate` | string | ❌ No | Custom end date (YYYY-MM-DD) | `2025-12-31` |
+
+**Default Limits Per Period:**
+| Period | Default Limit | Description |
+|--------|---------------|-------------|
+| `daily` | 30 days | Last 30 days |
+| `weekly` | 12 weeks | Last 12 weeks (~3 months) |
+| `monthly` | 12 months | Last 12 months (1 year) |
+| `yearly` | All years | No limit |
+
+**Period Label Formats:**
+- `daily` - Format: **YYYY-MM-DD** (e.g., `2025-12-29`)
+- `weekly` - Format: **MMM D-D, YYYY** (e.g., `Jan 1-7, 2026` or `Dec 30-Jan 5, 2026`)
+- `monthly` - Format: **MMM YYYY** (e.g., `Dec 2025`)
+- `yearly` - Format: **YYYY** (e.g., `2025`)
+
+**Response Format (Enhanced):**
+```json
+{
+  "period": "monthly",
+  "total": 48,
+  "dataPoints": 12,
+  "appliedLimit": 12,
+  "dateRange": {
+    "start": "2025-01-01",
+    "end": "2025-12-31"
+  },
+  "data": [
+    {
+      "label": "Jan 2025",
+      "value": 3
+    },
+    {
+      "label": "Feb 2025",
+      "value": 5
+    },
+    {
+      "label": "Mar 2025",
+      "value": 7
+    }
+  ]
+}
+```
+
+**Weekly Label Examples:**
+```json
+{
+  "period": "weekly",
+  "total": 34,
+  "dataPoints": 12,
+  "appliedLimit": 12,
+  "dateRange": {
+    "start": "2025-10-06",
+    "end": "2025-12-29"
+  },
+  "data": [
+    { "label": "Oct 6-12, 2025", "value": 3 },
+    { "label": "Oct 13-19, 2025", "value": 2 },
+    { "label": "Oct 20-26, 2025", "value": 5 },
+    { "label": "Oct 27-Nov 2, 2025", "value": 4 },
+    { "label": "Nov 3-9, 2025", "value": 6 },
+    { "label": "Dec 22-28, 2025", "value": 4 }
+  ]
+}
+```
+
+#### 📊 Dummy Data Added
+
+**Growth Data Seed Script**: `prisma/seed-growth-data.ts`
+
+**Data Distribution (Sep - Dec 2025)**:
+| Month | Projects | Investors | Users |
+|-------|----------|-----------|-------|
+| Sep 2025 | 4 | 3 | 5 |
+| Oct 2025 | 5 | 4 | 4 |
+| Nov 2025 | 3 | 5 | 5 |
+| Dec 2025 | 4 | 3 | 3 |
+| **Total** | **16** | **15** | **17** |
+
+**Run Seed Script:**
+```bash
+npx ts-node prisma/seed-growth-data.ts
+```
+
+#### ✅ Key Features
+
+1. **Frontend-Ready Response**: Label & value format siap untuk charts/graphs dengan metadata lengkap
+2. **Multiple Period Support**: Daily, Weekly, Monthly, Yearly dengan default limits optimal
+3. **Custom Limit Override**: Flexible limit control (1-365) untuk setiap period type
+4. **Custom Date Range**: Support startDate & endDate untuk filtering custom range
+5. **Enhanced Weekly Labels**: Format readable "Jan 1-7, 2026" untuk chart visualization
+6. **Auto-Sorting**: Data sorted chronologically dengan sort key optimization
+7. **Admin-Only Access**: All analytics endpoints require ADMIN role (@Roles(ROLES.ADMIN))
+8. **Performance Optimized**: Database-level filtering dengan date range untuk query efficiency
+9. **Response Metadata**: Includes dataPoints, appliedLimit, dateRange untuk frontend context
+10. **Chart-Optimized**: Max 30-50 data points default untuk chart readability
+
+#### 🧪 Test Results
+
+```
+Test Suites: 17 passed, 17 total
+Tests:       158 passed, 158 total
+Build:       ✅ SUCCESS
+```
+
+#### 📝 Files Modified
+
+**src/app.module.ts**
+```typescript
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+
+@Module({
+  imports: [
+    // ... existing modules
+    AnalyticsModule,  // NEW
+  ],
+})
+```
+
+**APP_NOTES.md**
+- Added Version 1.7.0 changelog with Analytics module documentation
+
+**ANALYTICS_API_DOCS.md** (NEW)
+- Complete API documentation untuk frontend developers
+- Request/Response examples dengan TypeScript types
+- Integration examples (React, Chart.js, Recharts)
+- Error responses & troubleshooting guide
+- Common use cases & quick reference
+
+#### 🎯 Use Cases
+
+1. **Admin Dashboard Monitoring**: Real-time growth charts untuk projects, investors, users
+2. **Performance Tracking**: Monitor daily/weekly trends untuk identify spikes atau drops
+3. **Business Intelligence**: Analyze growth patterns across different time periods
+4. **Trend Analysis**: Identify seasonality, peak periods, dan growth acceleration
+5. **Custom Reporting**: Generate reports untuk specific date ranges
+6. **Mobile-Responsive Analytics**: Adaptive data limits untuk different screen sizes
+7. **Stakeholder Presentations**: Clean data visualization untuk management reports
+
+#### ⚡ Performance Improvements
+
+1. **Database-Level Filtering**: Query hanya data dalam date range yang diperlukan
+2. **Optimized Sorting**: Sort key untuk efficient chronological ordering
+3. **Default Limits**: Prevent overload dengan max 30-50 data points per chart
+4. **Minimal Data Transfer**: Only `createdAt` field selected dari database
+5. **Efficient Grouping**: Map-based aggregation untuk fast data processing
+
+#### 📦 Summary
+
+| Category | Count | Details |
+|----------|-------|---------|
+| New Modules | 1 | Analytics module with advanced features |
+| New Files | 6 | DTOs, Service, Controller, Module, API Docs |
+| Updated Files | 5 | Enhanced DTOs, Service, Controller |
+| New Endpoints | 3 | Projects, Investors, Users growth |
+| Request Parameters | 4 | period, limit, startDate, endDate |
+| Response Fields | 6 | period, total, dataPoints, appliedLimit, dateRange, data |
+| Period Types | 4 | daily, weekly, monthly, yearly |
+| Default Limits | 3 | daily=30, weekly=12, monthly=12 |
+| Dummy Data Added | 48 records | 16 projects, 15 investors, 17 users |
+| Time Period Covered | 4 months | Sep - Dec 2025 |
+| Performance Optimizations | 5 | DB filtering, sorting, limits, minimal transfer, grouping |
+| Documentation Files | 1 | ANALYTICS_API_DOCS.md (Frontend guide) |
+
+#### 🔄 Integration Points & Usage Examples
+
+**⚠️ Authentication Required:**
+All analytics endpoints require ADMIN role. Include JWT token in Authorization header.
+
+```typescript
+const token = 'your-jwt-token';
+const headers = {
+  'Authorization': `Bearer ${token}`,
+  'Content-Type': 'application/json'
+};
+```
+
+**Example 1: Default Monthly (Last 12 months)**
+```typescript
+// Fetch monthly project growth (default: 12 months)
+const response = await fetch('/analytics/projects/growth?period=monthly', {
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+const data = await response.json();
+
+// Use with chart library (Chart.js, Recharts, etc.)
+const chartData = {
+  labels: data.data.map(d => d.label),    // ["Jan 2025", "Feb 2025", ...]
+  values: data.data.map(d => d.value),    // [3, 5, 7, ...]
+};
+
+// Display metadata
+console.log(`Showing ${data.dataPoints} months of data`);
+console.log(`Date range: ${data.dateRange.start} to ${data.dateRange.end}`);
+```
+
+**Example 2: Weekly with Custom Limit (Last 4 weeks)**
+```typescript
+// Fetch last 4 weeks of investor growth
+const response = await fetch('/analytics/investors/growth?period=weekly&limit=4', {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+const data = await response.json();
+
+// Chart with weekly range labels
+const chartData = {
+  labels: data.data.map(d => d.label),  // ["Dec 1-7, 2025", "Dec 8-14, 2025", ...]
+  values: data.data.map(d => d.value),  // [5, 3, 7, 4]
+};
+```
+
+**Example 3: Daily with Custom Date Range**
+```typescript
+// Fetch daily growth for specific month
+const startDate = '2025-12-01';
+const endDate = '2025-12-31';
+const response = await fetch(
+  `/analytics/users/growth?period=daily&startDate=${startDate}&endDate=${endDate}`,
+  { headers: { 'Authorization': `Bearer ${token}` } }
+);
+const data = await response.json();
+
+// Line chart for daily trends
+const chartData = {
+  labels: data.data.map(d => d.label),  // ["2025-12-01", "2025-12-02", ...]
+  values: data.data.map(d => d.value),  // [2, 1, 3, 0, 4, ...]
+};
+```
+
+**Example 4: Admin Dashboard - Multiple Charts**
+```typescript
+// Dashboard with multiple period views
+const headers = { 'Authorization': `Bearer ${token}` };
+const [daily, weekly, monthly] = await Promise.all([
+  fetch('/analytics/projects/growth?period=daily&limit=7', { headers }).then(r => r.json()),
+  fetch('/analytics/investors/growth?period=weekly&limit=12', { headers }).then(r => r.json()),
+  fetch('/analytics/users/growth?period=monthly&limit=6', { headers }).then(r => r.json()),
+]);
+
+// Render 3 charts side by side
+renderChart('daily-chart', daily.data);     // Last 7 days
+renderChart('weekly-chart', weekly.data);   // Last 12 weeks
+renderChart('monthly-chart', monthly.data); // Last 6 months
+```
+
+**Example 5: Responsive Chart Limits**
+```typescript
+// Adjust limit based on screen size
+const isMobile = window.innerWidth < 768;
+const limit = isMobile ? 7 : 30;  // 7 days on mobile, 30 on desktop
+
+const response = await fetch(
+  `/analytics/projects/growth?period=daily&limit=${limit}`,
+  { headers: { 'Authorization': `Bearer ${token}` } }
+);
+const data = await response.json();
+```
 
 ---
 

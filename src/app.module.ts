@@ -25,6 +25,7 @@ import { ProfitsModule } from './modules/profits/profits.module';
 import { CronModule } from './modules/cron/cron.module';
 import { RefundsModule } from './modules/refunds/refunds.module';
 import { UserDashboardModule } from './modules/user-dashboard/user-dashboard.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { UserDashboardModule } from './modules/user-dashboard/user-dashboard.mod
     CronModule,
     RefundsModule,
     UserDashboardModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [
