@@ -6,13 +6,48 @@ import { PlatformWalletService } from './platform-wallet.service';
 import { TransactionService, TransactionResult } from './transaction.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 
+// Based on smart contract `projects` mapping
 export interface ProjectData {
-  owner: string;
+  id: bigint;
+  idToken: bigint;
   valueProject: bigint;
-  maxCrowdFunding: bigint;
+  maxInvested: bigint;
   totalRaised: bigint;
-  status: number;
-  cid: string;
+  totalKilos: bigint;
+  profitPerKillos: bigint;
+  sharedProfit: bigint;
+  status: number; // ProjectStatus enum
+}
+
+// Based on smart contract `contribution` mapping
+export interface ContributionData {
+  id: bigint;
+  idToken: bigint;
+  idProject: bigint;
+  investor: string;
+  amount: bigint;
+  status: number; // InvestmentStatus enum
+}
+
+// Return type for getAdminRequiredDeposit
+export interface AdminRequiredDeposit {
+  totalPrincipal: bigint;
+  totalInvestorProfit: bigint;
+  totalRequired: bigint;
+}
+
+// Return type for getInvestorReturn
+export interface InvestorReturn {
+  principal: bigint;
+  profit: bigint;
+  totalReturn: bigint;
+}
+
+// Return type for getProjectProfitBreakdown
+export interface ProjectProfitBreakdown {
+  grossProfit: bigint;
+  investorProfitPool: bigint;
+  platformProfit: bigint;
 }
 
 @Injectable()
@@ -208,44 +243,45 @@ export class StomaTradeContractService implements OnModuleInit {
   }
 
   /**
-   * Admin deposits profit for a project
+   * UPDATED: Project owner withdraws crowdfunding proceeds
+   * This was previously called "depositProfit" but actual contract function is "withdrawProject"
+   * The owner calls this after project is finished to withdraw the raised funds
    */
-  async depositProfit(
-    projectId: bigint,
-    amount: bigint,
-  ): Promise<TransactionResult> {
-    this.logger.log(`Depositing profit ${amount} for project ${projectId}`);
+  async withdrawProject(projectId: bigint): Promise<TransactionResult> {
+    this.logger.log(`Withdrawing project ${projectId} funds`);
 
     return await this.transactionService.executeContractMethod(
       this.contract,
-      'depositProfit',
-      [projectId, amount],
-    );
-  }
-
-  /**
-   * Investor claims profit from a project
-   * Note: This should be called by the investor's wallet, not the platform wallet
-   */
-  async claimProfit(projectId: bigint): Promise<TransactionResult> {
-    this.logger.log(`Claiming profit for project ${projectId}`);
-
-    return await this.transactionService.executeContractMethod(
-      this.contract,
-      'claimProfit',
+      'withdrawProject',
       [projectId],
     );
   }
 
   /**
-   * Admin marks project as refundable
+   * UPDATED: Investor claims profit/returns from a project
+   * Contract function is "claimWithdraw", not "claimProfit"
+   * Note: This should be called by the investor's wallet, not the platform wallet
    */
-  async markRefundable(projectId: bigint): Promise<TransactionResult> {
-    this.logger.log(`Marking project ${projectId} as refundable`);
+  async claimWithdraw(projectId: bigint): Promise<TransactionResult> {
+    this.logger.log(`Claiming withdraw for project ${projectId}`);
 
     return await this.transactionService.executeContractMethod(
       this.contract,
-      'refundable',
+      'claimWithdraw',
+      [projectId],
+    );
+  }
+
+  /**
+   * UPDATED: Admin marks project as refundable
+   * Contract function is "refundProject", not "refundable"
+   */
+  async refundProject(projectId: bigint): Promise<TransactionResult> {
+    this.logger.log(`Marking project ${projectId} for refund`);
+
+    return await this.transactionService.executeContractMethod(
+      this.contract,
+      'refundProject',
       [projectId],
     );
   }
@@ -265,14 +301,29 @@ export class StomaTradeContractService implements OnModuleInit {
   }
 
   /**
-   * Close crowdfunding for a project
+   * UPDATED: Close/finish project
+   * Contract function is "closeProject", not "closeCrowdFunding"
    */
-  async closeCrowdFunding(projectId: bigint): Promise<TransactionResult> {
-    this.logger.log(`Closing crowdfunding for project ${projectId}`);
+  async closeProject(projectId: bigint): Promise<TransactionResult> {
+    this.logger.log(`Closing project ${projectId}`);
 
     return await this.transactionService.executeContractMethod(
       this.contract,
-      'closeCrowdFunding',
+      'closeProject',
+      [projectId],
+    );
+  }
+
+  /**
+   * NEW: Finish project (marks project as completed)
+   * This is a separate action from closing crowdfunding
+   */
+  async finishProject(projectId: bigint): Promise<TransactionResult> {
+    this.logger.log(`Finishing project ${projectId}`);
+
+    return await this.transactionService.executeContractMethod(
+      this.contract,
+      'finishProject',
       [projectId],
     );
   }
@@ -280,70 +331,118 @@ export class StomaTradeContractService implements OnModuleInit {
   // ============ READ FUNCTIONS ============
 
   /**
-   * Get project data
+   * UPDATED: Get project data using projects mapping
+   * Contract uses mapping, not a getter function
    */
   async getProject(projectId: bigint): Promise<ProjectData> {
     this.logger.log(`Getting project ${projectId} data`);
 
     const result = await this.transactionService.callContractMethod(
       this.contract,
-      'getProject',
+      'projects',
       [projectId],
     );
 
     return {
-      owner: result.owner,
+      id: result.id,
+      idToken: result.idToken,
       valueProject: result.valueProject,
-      maxCrowdFunding: result.maxCrowdFunding,
+      maxInvested: result.maxInvested,
       totalRaised: result.totalRaised,
+      totalKilos: result.totalKilos,
+      profitPerKillos: result.profitPerKillos,
+      sharedProfit: result.sharedProfit,
       status: result.status,
-      cid: result.cid,
     };
   }
 
   /**
-   * Get investor contribution to a project
+   * UPDATED: Get investor contribution using contribution mapping
+   * Contract uses mapping, not a getter function
    */
   async getContribution(
     projectId: bigint,
     investor: string,
-  ): Promise<bigint> {
+  ): Promise<ContributionData> {
     this.logger.log(`Getting contribution for project ${projectId} from ${investor}`);
 
-    return await this.transactionService.callContractMethod(
+    const result = await this.transactionService.callContractMethod(
       this.contract,
-      'getContribution',
+      'contribution',
       [projectId, investor],
     );
+
+    return {
+      id: result.id,
+      idToken: result.idToken,
+      idProject: result.idProject,
+      investor: result.investor,
+      amount: result.amount,
+      status: result.status,
+    };
   }
 
   /**
-   * Get profit pool for a project
+   * NEW: Get admin required deposit for project completion
+   * Returns total principal, investor profit, and total required
    */
-  async getProfitPool(projectId: bigint): Promise<bigint> {
-    this.logger.log(`Getting profit pool for project ${projectId}`);
+  async getAdminRequiredDeposit(projectId: bigint): Promise<AdminRequiredDeposit> {
+    this.logger.log(`Getting admin required deposit for project ${projectId}`);
 
-    return await this.transactionService.callContractMethod(
+    const result = await this.transactionService.callContractMethod(
       this.contract,
-      'getProfitPool',
+      'getAdminRequiredDeposit',
       [projectId],
     );
+
+    return {
+      totalPrincipal: result.totalPrincipal,
+      totalInvestorProfit: result.totalInvestorProfit,
+      totalRequired: result.totalRequired,
+    };
   }
 
   /**
-   * Get claimed profit by an investor
+   * NEW: Get investor return calculation
+   * Returns principal, profit, and total return for an investor
    */
-  async getClaimedProfit(
+  async getInvestorReturn(
     projectId: bigint,
     investor: string,
-  ): Promise<bigint> {
-    this.logger.log(`Getting claimed profit for project ${projectId} from ${investor}`);
+  ): Promise<InvestorReturn> {
+    this.logger.log(`Getting investor return for project ${projectId} investor ${investor}`);
 
-    return await this.transactionService.callContractMethod(
+    const result = await this.transactionService.callContractMethod(
       this.contract,
-      'getClaimedProfit',
+      'getInvestorReturn',
       [projectId, investor],
     );
+
+    return {
+      principal: result.principal,
+      profit: result.profit,
+      totalReturn: result.totalReturn,
+    };
+  }
+
+  /**
+   * NEW: Get project profit breakdown
+   * Returns gross profit, investor profit pool, and platform profit
+   */
+  async getProjectProfitBreakdown(projectId: bigint): Promise<ProjectProfitBreakdown> {
+    this.logger.log(`Getting profit breakdown for project ${projectId}`);
+
+    const result = await this.transactionService.callContractMethod(
+      this.contract,
+      'getProjectProfitBreakdown',
+      [projectId],
+    );
+
+    return {
+      grossProfit: result.grossProfit,
+      investorProfitPool: result.investorProfitPool,
+      platformProfit: result.platformProfit,
+    };
   }
 
   /**
@@ -357,6 +456,63 @@ export class StomaTradeContractService implements OnModuleInit {
       'tokenURI',
       [tokenId],
     );
+  }
+
+  // ============ BACKWARD COMPATIBILITY METHODS ============
+  // These methods maintain backward compatibility with existing services
+
+  /**
+   * @deprecated Use withdrawProject() instead
+   * Backward compatibility: depositProfit now calls withdrawProject
+   */
+  async depositProfit(projectId: bigint, _amount?: bigint): Promise<TransactionResult> {
+    this.logger.warn('depositProfit() is deprecated, use withdrawProject() instead');
+    return this.withdrawProject(projectId);
+  }
+
+  /**
+   * @deprecated Use claimWithdraw() instead
+   * Backward compatibility: claimProfit now calls claimWithdraw
+   */
+  async claimProfit(projectId: bigint): Promise<TransactionResult> {
+    this.logger.warn('claimProfit() is deprecated, use claimWithdraw() instead');
+    return this.claimWithdraw(projectId);
+  }
+
+  /**
+   * @deprecated Use refundProject() instead
+   * Backward compatibility: markRefundable now calls refundProject
+   */
+  async markRefundable(projectId: bigint): Promise<TransactionResult> {
+    this.logger.warn('markRefundable() is deprecated, use refundProject() instead');
+    return this.refundProject(projectId);
+  }
+
+  /**
+   * @deprecated Use closeProject() instead
+   * Backward compatibility: closeCrowdFunding now calls closeProject
+   */
+  async closeCrowdFunding(projectId: bigint): Promise<TransactionResult> {
+    this.logger.warn('closeCrowdFunding() is deprecated, use closeProject() instead');
+    return this.closeProject(projectId);
+  }
+
+  /**
+   * @deprecated Use getProject() with new ProjectData interface instead
+   * Backward compatibility: Returns legacy format
+   */
+  async getProfitPool(_projectId: bigint): Promise<bigint> {
+    this.logger.warn('getProfitPool() is deprecated and not available in contract');
+    throw new Error('getProfitPool() is not available. Use getProjectProfitBreakdown() instead');
+  }
+
+  /**
+   * @deprecated Use getInvestorReturn() instead
+   * Backward compatibility: Returns only amount (principal)
+   */
+  async getClaimedProfit(_projectId: bigint, _investor: string): Promise<bigint> {
+    this.logger.warn('getClaimedProfit() is deprecated and not available in contract');
+    throw new Error('getClaimedProfit() is not available. Use getInvestorReturn() instead');
   }
 
   // ============ EVENT PARSING ============

@@ -92,7 +92,7 @@ describe('ProfitsService', () => {
       prisma.profitPool.findUnique.mockResolvedValue(null);
       prisma.profitPool.create.mockResolvedValue(mockProfitPool);
       
-      contractService.depositProfit.mockResolvedValue({
+      contractService.withdrawProject.mockResolvedValue({
         hash: '0xDepositTxHash',
         receipt: { status: 1 },
         success: true,
@@ -101,7 +101,7 @@ describe('ProfitsService', () => {
 
       const result = await service.depositProfit(depositDto);
 
-      expect(contractService.depositProfit).toHaveBeenCalled();
+      expect(contractService.withdrawProject).toHaveBeenCalled();
       expect(result).toHaveProperty('profitPool');
       expect(result).toHaveProperty('transaction');
     });
@@ -120,7 +120,7 @@ describe('ProfitsService', () => {
         remainingProfit: '150000000000000000000',
       });
       
-      contractService.depositProfit.mockResolvedValue({
+      contractService.withdrawProject.mockResolvedValue({
         hash: '0xDepositTxHash',
         receipt: { status: 1 },
         success: true,
@@ -174,7 +174,7 @@ describe('ProfitsService', () => {
       });
       prisma.profitClaim.create.mockResolvedValue(mockProfitClaim);
       
-      contractService.claimProfit.mockResolvedValue({
+      contractService.claimWithdraw.mockResolvedValue({
         hash: '0xClaimTxHash',
         receipt: { status: 1, logs: [] },
         success: true,
@@ -195,7 +195,7 @@ describe('ProfitsService', () => {
 
       const result = await service.claimProfit(claimDto);
 
-      expect(contractService.claimProfit).toHaveBeenCalled();
+      expect(contractService.claimWithdraw).toHaveBeenCalled();
       expect(result).toEqual(mockProfitClaim);
     });
 

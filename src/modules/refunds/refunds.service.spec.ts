@@ -72,7 +72,7 @@ describe('RefundsService', () => {
         transactionHash: '0xTxHash',
       });
 
-      contractService.markRefundable.mockResolvedValue({
+      contractService.refundProject.mockResolvedValue({
         hash: '0xTxHash',
         receipt: { status: 1 },
         success: true,
@@ -86,7 +86,7 @@ describe('RefundsService', () => {
 
       const result = await service.markRefundable(dto);
 
-      expect(contractService.markRefundable).toHaveBeenCalled();
+      expect(contractService.refundProject).toHaveBeenCalled();
       expect(result.status).toBe('REFUNDABLE');
       expect(result.reason).toBe('Crowdfunding failed');
     });
