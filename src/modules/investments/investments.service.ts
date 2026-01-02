@@ -7,6 +7,12 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { StomaTradeContractService } from '../../blockchain/services/stomatrade-contract.service';
 import { CreateInvestmentDto } from './dto/create-investment.dto';
+import {
+  InvestmentResponseDto,
+  InvestmentDetailResponseDto,
+  InvestmentListResponseDto,
+  ProjectStatsResponseDto,
+} from './dto/investment-response.dto';
 import { toWei } from '../../common/utils/wei-converter.util';
 
 @Injectable()
@@ -36,7 +42,7 @@ export class InvestmentsService {
     return url;
   }
 
-  async create(dto: CreateInvestmentDto) {
+  async create(dto: CreateInvestmentDto): Promise<InvestmentResponseDto> {
     this.logger.log(
       `Creating investment for user ${dto.userId} in project ${dto.projectId}`,
     );
@@ -154,14 +160,34 @@ export class InvestmentsService {
         },
         include: {
           user: true,
-          project: true,
+          project: {
+            include: {
+              farmer: true,
+            },
+          },
         },
       });
 
       await this.updateUserPortfolio(dto.userId);
 
       this.logger.log(`Investment created successfully: ${investment.id}`);
-      return updatedInvestment;
+
+      // Return clean response DTO
+      return {
+        data: {
+          id: updatedInvestment.id,
+          amount: updatedInvestment.amount,
+          receiptTokenId: updatedInvestment.receiptTokenId,
+          message: 'Investment Successfully',
+          investedAt: updatedInvestment.investedAt,
+          project: {
+            id: updatedInvestment.project.id,
+            commodity: updatedInvestment.project.commodity,
+            farmerName: updatedInvestment.project.farmer?.name || 'N/A',
+            targetAmount: updatedInvestment.project.volume.toString(),
+          },
+        },
+      } as InvestmentResponseDto;
     } catch (error) {
       this.logger.error('Error processing investment on blockchain', error);
 

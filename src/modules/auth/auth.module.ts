@@ -8,11 +8,13 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { WalletAuthGuard } from './guards/wallet-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { PrismaModule } from '../../prisma/prisma.module';
+import { BlockchainModule } from '../../blockchain/blockchain.module';
 import type { StringValue } from 'ms';
 
 @Module({
   imports: [
     PrismaModule,
+    BlockchainModule,
     ConfigModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({

@@ -11,6 +11,7 @@ import { ethers } from 'ethers';
 // Type-only import - actual PrivyClient is lazy-loaded to prevent serverless crash
 import type { PrivyClient } from '@privy-io/server-auth';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EthersProviderService } from '../../blockchain/services/ethers-provider.service';
 import { RequestNonceDto } from './dto/request-nonce.dto';
 import { VerifySignatureDto } from './dto/verify-signature.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
@@ -43,6 +44,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly providerService: EthersProviderService,
   ) {
     // Don't initialize Privy in constructor to prevent serverless crash
     // Will lazy-load when needed
@@ -319,12 +321,7 @@ export class AuthService {
 
   private async isContractAddress(address: string): Promise<boolean> {
     try {
-      const rpcUrl = this.configService.get<string>('BLOCKCHAIN_RPC_URL');
-      if (!rpcUrl) {
-        return false;
-      }
-
-      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      const provider = this.providerService.getProvider();
       const code = await provider.getCode(address);
 
       return code !== '0x';
@@ -395,26 +392,21 @@ export class AuthService {
     walletAddress: string,
   ): Promise<boolean> {
     try {
-      
-      const EIP1271_MAGIC_VALUE = '0x1626ba7e';
-      
-      const rpcUrl = this.configService.get<string>('BLOCKCHAIN_RPC_URL');
-      if (!rpcUrl) {
-        return false;
-      }
 
-      const provider = new ethers.JsonRpcProvider(rpcUrl);
-      
+      const EIP1271_MAGIC_VALUE = '0x1626ba7e';
+
+      const provider = this.providerService.getProvider();
+
       const messageHash = ethers.hashMessage(message);
-      
+
       const eip1271Abi = [
         'function isValidSignature(bytes32 hash, bytes signature) view returns (bytes4)',
       ];
-      
+
       const contract = new ethers.Contract(walletAddress, eip1271Abi, provider);
-      
+
       const result = await contract.isValidSignature(messageHash, signature);
-      
+
       return result === EIP1271_MAGIC_VALUE;
     } catch (error) {
       this.logger.error('Smart wallet signature verification failed', error);

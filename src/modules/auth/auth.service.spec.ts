@@ -60,6 +60,18 @@ describeOrSkip('AuthService', () => {
     }),
   };
 
+  const mockEthersProviderService = {
+    getProvider: jest.fn(() => ({
+      getCode: jest.fn().mockResolvedValue('0x'),
+      getNetwork: jest.fn().mockResolvedValue({
+        chainId: BigInt(5003),
+        name: 'mantle-sepolia',
+      }),
+    })),
+    waitForInit: jest.fn().mockResolvedValue(undefined),
+    getChainId: jest.fn().mockReturnValue(5003),
+  };
+
   const mockUser = {
     id: 'user-uuid-1',
     walletAddress: '0x742d35cc6634c0532925a3b844bc454e4438f44e',
@@ -78,6 +90,9 @@ describeOrSkip('AuthService', () => {
     const { AuthService } = await import('./auth.service');
     const { PrismaService } = await import('../../prisma/prisma.service');
     const { ConfigService } = await import('@nestjs/config');
+    const { EthersProviderService } = await import(
+      '../../blockchain/services/ethers-provider.service'
+    );
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -85,6 +100,7 @@ describeOrSkip('AuthService', () => {
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: EthersProviderService, useValue: mockEthersProviderService },
       ],
     }).compile();
 

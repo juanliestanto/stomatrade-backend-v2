@@ -8,6 +8,7 @@ export class PlatformWalletService implements OnModuleInit {
   private readonly logger = new Logger(PlatformWalletService.name);
   private wallet: ethers.Wallet;
   private walletAddress: string;
+  private initPromise: Promise<void>;
 
   constructor(
     private readonly configService: ConfigService,
@@ -15,6 +16,11 @@ export class PlatformWalletService implements OnModuleInit {
   ) { }
 
   async onModuleInit() {
+    this.initPromise = this.initialize();
+    await this.initPromise;
+  }
+
+  private async initialize() {
     const privateKey = this.configService.get<string>(
       'PLATFORM_WALLET_PRIVATE_KEY',
     );
@@ -24,6 +30,9 @@ export class PlatformWalletService implements OnModuleInit {
     }
 
     try {
+      // Wait for provider service to initialize first
+      await this.providerService.waitForInit();
+
       // Create wallet from private key
       const provider = this.providerService.getProvider();
       this.wallet = new ethers.Wallet(privateKey, provider);
@@ -50,6 +59,12 @@ export class PlatformWalletService implements OnModuleInit {
     } catch (error) {
       this.logger.error('Failed to initialize platform wallet', error);
       throw error;
+    }
+  }
+
+  async waitForInit(): Promise<void> {
+    if (this.initPromise) {
+      await this.initPromise;
     }
   }
 

@@ -10,6 +10,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { InvestmentsService } from './investments.service';
 import { CreateInvestmentDto } from './dto/create-investment.dto';
+import { InvestmentResponseDto } from './dto/investment-response.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -31,6 +32,7 @@ export class InvestmentsController {
   @ApiResponse({
     status: HttpStatus.CREATED,
     description: 'Investment created and receipt NFT minted successfully',
+    type: InvestmentResponseDto,
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
@@ -44,7 +46,7 @@ export class InvestmentsController {
     status: HttpStatus.FORBIDDEN,
     description: 'Investor role required',
   })
-  create(@Body() dto: CreateInvestmentDto) {
+  create(@Body() dto: CreateInvestmentDto): Promise<InvestmentResponseDto> {
     return this.investmentsService.create(dto);
   }
 

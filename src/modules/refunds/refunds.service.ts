@@ -43,10 +43,10 @@ export class RefundsService {
       const projectTokenId = BigInt(project.tokenId);
 
       this.logger.log(
-        `Calling blockchain refundable() - ProjectId: ${projectTokenId}`,
+        `Calling blockchain refundProject() - ProjectId: ${projectTokenId}`,
       );
 
-      const txResult = await this.stomaTradeContract.markRefundable(projectTokenId);
+      const txResult = await this.stomaTradeContract.refundProject(projectTokenId);
 
       const blockchainTx = await this.prisma.blockchainTransaction.create({
         data: {

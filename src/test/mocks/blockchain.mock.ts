@@ -37,10 +37,17 @@ export const mockStomaTradeContractService = {
   mintFarmerNFT: jest.fn().mockResolvedValue(mockTransactionResult),
   addFarmer: jest.fn().mockResolvedValue(mockTransactionResult),
   invest: jest.fn().mockResolvedValue(mockTransactionResult),
+  // New method names (aligned with smart contract)
+  withdrawProject: jest.fn().mockResolvedValue(mockTransactionResult),
+  claimWithdraw: jest.fn().mockResolvedValue(mockTransactionResult),
+  refundProject: jest.fn().mockResolvedValue(mockTransactionResult),
+  claimRefund: jest.fn().mockResolvedValue(mockTransactionResult),
+  closeProject: jest.fn().mockResolvedValue(mockTransactionResult),
+  finishProject: jest.fn().mockResolvedValue(mockTransactionResult),
+  // Deprecated methods (backward compatibility)
   depositProfit: jest.fn().mockResolvedValue(mockTransactionResult),
   claimProfit: jest.fn().mockResolvedValue(mockTransactionResult),
   markRefundable: jest.fn().mockResolvedValue(mockTransactionResult),
-  claimRefund: jest.fn().mockResolvedValue(mockTransactionResult),
   closeCrowdFunding: jest.fn().mockResolvedValue(mockTransactionResult),
   getProject: jest.fn().mockResolvedValue({
     owner: '0xOwnerAddress',
@@ -50,7 +57,31 @@ export const mockStomaTradeContractService = {
     status: 0,
     cid: 'QmTestCid',
   }),
-  getContribution: jest.fn().mockResolvedValue(BigInt(50000)),
+  getContribution: jest.fn().mockResolvedValue({
+    id: BigInt(1),
+    idToken: BigInt(1001),
+    idProject: BigInt(3001),
+    investor: '0xInvestorAddress',
+    amount: BigInt(50000),
+    status: 0,
+  }),
+  // New read methods (aligned with smart contract)
+  getAdminRequiredDeposit: jest.fn().mockResolvedValue({
+    totalPrincipal: BigInt(100000),
+    totalInvestorProfit: BigInt(10000),
+    totalRequired: BigInt(110000),
+  }),
+  getInvestorReturn: jest.fn().mockResolvedValue({
+    principal: BigInt(50000),
+    profit: BigInt(5000),
+    totalReturn: BigInt(55000),
+  }),
+  getProjectProfitBreakdown: jest.fn().mockResolvedValue({
+    grossProfit: BigInt(20000),
+    investorProfitPool: BigInt(16000),
+    platformProfit: BigInt(4000),
+  }),
+  // Deprecated methods (backward compatibility)
   getProfitPool: jest.fn().mockResolvedValue(BigInt(10000)),
   getClaimedProfit: jest.fn().mockResolvedValue(BigInt(5000)),
   getTokenURI: jest.fn().mockResolvedValue('ipfs://QmTestCid'),

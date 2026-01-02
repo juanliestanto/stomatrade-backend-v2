@@ -43,12 +43,11 @@ export class ProfitsService {
       const amountInWei = toWei(dto.amount);
 
       this.logger.log(
-        `Calling blockchain depositProfit() - ProjectId: ${projectTokenId}, Amount: ${amountInWei}`,
+        `Calling blockchain withdrawProject() - ProjectId: ${projectTokenId}`,
       );
 
-      const txResult = await this.stomaTradeContract.depositProfit(
+      const txResult = await this.stomaTradeContract.withdrawProject(
         projectTokenId,
-        amountInWei,
       );
 
       let profitPool = await this.prisma.profitPool.findUnique({
@@ -145,10 +144,10 @@ export class ProfitsService {
       const projectTokenId = BigInt(project.tokenId);
 
       this.logger.log(
-        `Calling blockchain claimProfit() - ProjectId: ${projectTokenId}`,
+        `Calling blockchain claimWithdraw() - ProjectId: ${projectTokenId}`,
       );
 
-      const txResult = await this.stomaTradeContract.claimProfit(projectTokenId);
+      const txResult = await this.stomaTradeContract.claimWithdraw(projectTokenId);
 
       let claimedAmount = '0';
       if (txResult.receipt) {

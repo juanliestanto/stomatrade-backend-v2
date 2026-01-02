@@ -17,11 +17,19 @@ describe('InvestmentsService', () => {
     role: 'INVESTOR',
   };
 
+  const mockFarmer = {
+    id: 'farmer-uuid-1',
+    name: 'Pak Budi',
+    age: 45,
+  };
+
   const mockProject = {
     id: 'project-uuid-1',
     tokenId: 3001,
     commodity: 'Rice',
+    volume: 1000,
     projectSubmission: {},
+    farmer: mockFarmer,
   };
 
   const mockInvestment = {
@@ -104,7 +112,15 @@ describe('InvestmentsService', () => {
       const result = await service.create(createDto);
 
       expect(contractService.invest).toHaveBeenCalled();
-      expect(result.receiptTokenId).toBe(4001);
+      expect(result.data).toBeDefined();
+      expect(result.data.id).toBe('investment-uuid-1');
+      expect(result.data.amount).toBe('100000000000000000000');
+      expect(result.data.receiptTokenId).toBe(4001);
+      expect(result.data.message).toBe('Investment Successfully');
+      expect(result.data.investedAt).toBeDefined();
+      expect(result.data.project.commodity).toBe('Rice');
+      expect(result.data.project.farmerName).toBe('Pak Budi');
+      expect(result.data.project.targetAmount).toBe('1000');
     });
 
     it('should throw NotFoundException if user not found', async () => {

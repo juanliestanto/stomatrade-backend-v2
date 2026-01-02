@@ -1,27 +1,52 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class EthersProviderService implements OnModuleInit {
   private readonly logger = new Logger(EthersProviderService.name);
   private provider: ethers.JsonRpcProvider;
   private chainId: number;
+  private initPromise: Promise<void>;
+  private isInitialized = false;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async onModuleInit() {
-    const rpcUrl = this.configService.get<string>('BLOCKCHAIN_RPC_URL');
-    const chainIdStr = this.configService.get<string>('BLOCKCHAIN_CHAIN_ID');
+    this.initPromise = this.initialize();
+    await this.initPromise;
+  }
 
-    if (!rpcUrl) {
-      throw new Error('BLOCKCHAIN_RPC_URL is not configured');
+  private async initialize() {
+    // Get blockchain configuration from database
+    const appProject = await this.prisma.appProject.findFirst({
+      where: {
+        name: 'StomaTrade',
+      },
+    });
+
+    if (!appProject?.rpcUrl) {
+      throw new Error('RPC URL not found in database for StomaTrade project');
     }
 
-    this.chainId = chainIdStr ? parseInt(chainIdStr, 10) : 4202; // Default to Lisk Sepolia testnet
+    if (!appProject?.chainId) {
+      throw new Error('Chain ID not found in database for StomaTrade project');
+    }
 
-    // Create custom network for Lisk Sepolia (not recognized by default in ethers.js)
-    const customNetwork = new ethers.Network('lisk-sepolia', this.chainId);
+    const rpcUrl = appProject.rpcUrl;
+
+    // Parse chainId from CAIP-2 format (e.g., "eip155:5003" -> 5003)
+    const chainIdMatch = appProject.chainId.match(/eip155:(\d+)/);
+    if (!chainIdMatch) {
+      throw new Error(
+        `Invalid chainId format in database: ${appProject.chainId}. Expected format: eip155:<chainId>`,
+      );
+    }
+
+    this.chainId = parseInt(chainIdMatch[1], 10);
+
+    // Create custom network
+    const customNetwork = new ethers.Network('mantle-sepolia', this.chainId);
 
     this.provider = new ethers.JsonRpcProvider(rpcUrl, customNetwork, {
       staticNetwork: customNetwork,
@@ -29,12 +54,21 @@ export class EthersProviderService implements OnModuleInit {
 
     try {
       const network = await this.provider.getNetwork();
+      this.isInitialized = true;
       this.logger.log(
         `Connected to blockchain network: ${network.name} (Chain ID: ${network.chainId})`,
       );
+      this.logger.log(`RPC URL: ${rpcUrl}`);
+      this.logger.log(`CAIP-2 Chain ID: ${appProject.chainId}`);
     } catch (error) {
       this.logger.error('Failed to connect to blockchain provider', error);
       throw error;
+    }
+  }
+
+  async waitForInit(): Promise<void> {
+    if (this.initPromise) {
+      await this.initPromise;
     }
   }
 
