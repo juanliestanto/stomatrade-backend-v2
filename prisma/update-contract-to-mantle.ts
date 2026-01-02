@@ -18,6 +18,7 @@ async function main() {
     chainId: 'eip155:5001',
     contractAddress: '0x08A2cefa99A8848cD3aC34620f49F115587dcE28',
     abi: newAbi,
+    rpcUrl: 'https://rpc.sepolia.mantle.xyz',
   };
 
   // Check if record exists
@@ -34,6 +35,7 @@ async function main() {
         contractAddress: mantleConfig.contractAddress,
         abi: mantleConfig.abi,
         description: mantleConfig.description,
+        rpcUrl: mantleConfig.rpcUrl,
       },
     });
     console.log('✅ Updated successfully!');

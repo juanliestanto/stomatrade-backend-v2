@@ -2566,5 +2566,285 @@ await contract.depositProfit(projectId, amountInWei);
 
 ---
 
+### Version 1.9.0 - RPC URL Database Configuration (January 2026)
+
+#### 🔧 Database-Driven RPC Configuration
+
+Memindahkan konfigurasi RPC URL dari environment variables ke database untuk meningkatkan fleksibilitas dan manajemen multi-network.
+
+**Konsep:**
+- **Before**: RPC URL dikonfigurasi di `.env` file (`BLOCKCHAIN_RPC_URL`)
+- **After**: RPC URL disimpan di database table `AppProject` bersama contract address & ABI
+- **Benefit**: Single source of truth untuk semua konfigurasi blockchain per project
+
+#### 📁 Database Migration
+
+**NEW: rpcUrl Field in AppProject**
+📁 Migration: `20260102100506_add_rpc_url_to_app_project`
+
+```sql
+ALTER TABLE "AppProject"
+ADD COLUMN "rpcUrl" TEXT NOT NULL DEFAULT 'https://rpc.sepolia.mantle.xyz';
+```
+
+**Updated Schema** (`prisma/schema.prisma`):
+```typescript
+model AppProject {
+  id              String   @id @default(cuid())
+  name            String
+  description     String
+  chainId         String
+  contractAddress String
+  abi             String
+  rpcUrl          String   // ← NEW FIELD
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deleted         Boolean  @default(false)
+}
+```
+
+#### 🔄 Service Updates
+
+**1. EthersProviderService** (`src/blockchain/services/ethers-provider.service.ts`)
+
+**BEFORE:**
+```typescript
+async onModuleInit() {
+  // Get RPC URL from ENV
+  const rpcUrl = this.configService.get<string>('BLOCKCHAIN_RPC_URL');
+
+  if (!rpcUrl) {
+    throw new Error('BLOCKCHAIN_RPC_URL is not configured');
+  }
+
+  this.provider = new ethers.JsonRpcProvider(rpcUrl, customNetwork);
+}
+```
+
+**AFTER:**
+```typescript
+constructor(private readonly prisma: PrismaService) {}  // ← Only PrismaService, no ConfigService
+
+async onModuleInit() {
+  // Get blockchain configuration from database
+  const appProject = await this.prisma.appProject.findFirst({
+    where: { name: 'StomaTrade' }
+  });
+
+  if (!appProject?.rpcUrl) {
+    throw new Error('RPC URL not found in database for StomaTrade project');
+  }
+
+  if (!appProject?.chainId) {
+    throw new Error('Chain ID not found in database for StomaTrade project');
+  }
+
+  const rpcUrl = appProject.rpcUrl;
+
+  // Parse chainId from CAIP-2 format (e.g., "eip155:5003" -> 5003)
+  const chainIdMatch = appProject.chainId.match(/eip155:(\d+)/);
+  if (!chainIdMatch) {
+    throw new Error(
+      `Invalid chainId format in database: ${appProject.chainId}. Expected format: eip155:<chainId>`,
+    );
+  }
+
+  this.chainId = parseInt(chainIdMatch[1], 10);
+
+  // Create custom network
+  const customNetwork = new ethers.Network('mantle-sepolia', this.chainId);
+
+  this.provider = new ethers.JsonRpcProvider(rpcUrl, customNetwork, {
+    staticNetwork: customNetwork,
+  });
+
+  this.logger.log(`RPC URL: ${rpcUrl}`);
+  this.logger.log(`CAIP-2 Chain ID: ${appProject.chainId}`);
+}
+```
+
+**2. Update Contract Script** (`prisma/update-contract-to-mantle.ts`)
+
+Updated Mantle configuration to include `rpcUrl`:
+```typescript
+const mantleConfig = {
+  name: 'StomaTrade',
+  description: 'StomaTrade Contract on Mantle Sepolia',
+  chainId: 'eip155:5001',
+  contractAddress: '0x08A2cefa99A8848cD3aC34620f49F115587dcE28',
+  abi: newAbi,
+  rpcUrl: 'https://rpc.sepolia.mantle.xyz',  // ← NEW FIELD
+};
+```
+
+#### 🏗️ Architecture Changes
+
+**Configuration Flow:**
+
+**BEFORE (ENV-based):**
+```
+┌─────────────┐
+│   .env      │
+│             │
+│ RPC_URL=... │
+└──────┬──────┘
+       │
+       ▼
+┌──────────────────────┐
+│ EthersProviderService│
+└──────────────────────┘
+```
+
+**AFTER (Database-driven):**
+```
+┌──────────────┐
+│  Database    │
+│  AppProject  │
+│  ┌────────┐  │
+│  │rpcUrl  │  │
+│  │chainId │  │ ← CAIP-2 format (eip155:5003)
+│  │address │  │
+│  │abi     │  │
+│  └────────┘  │
+└──────┬───────┘
+       │
+       ├──────────────────────┐
+       │                      │
+       ▼                      ▼
+┌─────────────────┐   ┌────────────────────┐
+│ EthersProvider  │   │ StomaTradeContract │
+│ Service         │   │ Service            │
+│ - Get rpcUrl    │   │ - Get address      │
+│ - Parse chainId │   │ - Get ABI          │
+│ - Init provider │   │ - Init contract    │
+└─────────────────┘   └────────────────────┘
+```
+
+#### ✨ Benefits
+
+1. **Centralized Configuration** - Semua blockchain config (RPC, chainId, address, ABI) di satu table
+2. **Dynamic Switching** - Mudah switch network tanpa restart atau redeploy
+3. **Multi-Network Support** - Ready untuk support multiple chains/networks
+4. **CAIP-2 Standard** - ChainId menggunakan format standar CAIP-2 (e.g., `eip155:5003`)
+5. **Version Control** - Database migrations track perubahan konfigurasi
+6. **Zero ENV Dependency** - Tidak bergantung pada environment variables untuk network config
+7. **Audit Trail** - Database timestamps track kapan config berubah
+
+#### 🎯 Impact
+
+**Files Modified:**
+- ✅ `prisma/schema.prisma` - Added rpcUrl field
+- ✅ `src/blockchain/services/ethers-provider.service.ts` - Fetch RPC & parse chainId from DB
+- ✅ `prisma/update-contract-to-mantle.ts` - Include rpcUrl in config
+
+**Migration:**
+- ✅ `20260102100506_add_rpc_url_to_app_project` - ALTER TABLE ADD COLUMN
+
+**Dependencies:**
+- ✅ `EthersProviderService` now depends on `PrismaService` only
+- ✅ Removed `ConfigService` dependency from `EthersProviderService`
+- ✅ `BlockchainModule` already imports `PrismaModule` (no circular dependency)
+
+**Key Changes:**
+- ✅ ChainId parsing from CAIP-2 format (`eip155:5003` → `5003`)
+- ✅ Full validation for rpcUrl and chainId presence
+- ✅ Enhanced logging with CAIP-2 chainId display
+
+#### 🧪 Test Results
+
+```bash
+Test Suites: 17 passed, 17 total
+Tests:       158 passed, 158 total
+Build:       ✅ SUCCESS
+Migration:   ✅ SUCCESS (Applied to database)
+```
+
+#### 📝 Migration Notes
+
+**Current Database State:**
+- Existing `AppProject` record auto-updated with default RPC URL
+- Default value: `https://rpc.sepolia.mantle.xyz` (Mantle Sepolia)
+- No data loss - existing records preserved
+
+**How to Update RPC URL:**
+```sql
+-- Update RPC URL for existing project
+UPDATE "AppProject"
+SET "rpcUrl" = 'https://your-new-rpc-url.com'
+WHERE name = 'StomaTrade';
+```
+
+Or use the update script:
+```bash
+npx ts-node prisma/update-contract-to-mantle.ts
+```
+
+#### 🔐 Security Considerations
+
+**Environment Variables Still Used For:**
+- ✅ `PLATFORM_WALLET_PRIVATE_KEY` - Platform wallet private key (sensitive)
+- ✅ `JWT_SECRET` - JWT authentication secret
+- ✅ `DATABASE_URL` - Database connection string
+
+**Database Now Stores (All Public Data):**
+- ✅ `rpcUrl` - Public RPC endpoint URL
+- ✅ `chainId` - Network chain ID in CAIP-2 format (e.g., `eip155:5003`)
+- ✅ `contractAddress` - Public contract address
+- ✅ `abi` - Public contract ABI
+
+**No Longer Using Environment Variables For:**
+- ❌ `BLOCKCHAIN_RPC_URL` - Now from database
+- ❌ `BLOCKCHAIN_CHAIN_ID` - Now from database (CAIP-2 format)
+
+#### 🔗 CAIP-2 Format Guide
+
+**CAIP-2** (Chain Agnostic Improvement Proposal) adalah standar untuk chain identifiers.
+
+**Format:** `namespace:reference`
+- `namespace` - Blockchain namespace (e.g., `eip155` untuk EVM chains)
+- `reference` - Chain ID number
+
+**Common Examples:**
+```typescript
+// Mainnet Networks
+"eip155:1"      // Ethereum Mainnet
+"eip155:137"    // Polygon Mainnet
+"eip155:56"     // BSC Mainnet
+"eip155:5000"   // Mantle Mainnet
+
+// Testnet Networks
+"eip155:11155111" // Ethereum Sepolia
+"eip155:80001"    // Polygon Mumbai
+"eip155:97"       // BSC Testnet
+"eip155:5003"     // Mantle Sepolia (current)
+```
+
+**How It's Parsed:**
+```typescript
+const chainId = "eip155:5003";
+const match = chainId.match(/eip155:(\d+)/);
+const numericChainId = parseInt(match[1], 10); // → 5003
+```
+
+**Database Update Example:**
+```sql
+-- Update to different network
+UPDATE "AppProject"
+SET
+  "chainId" = 'eip155:1',
+  "rpcUrl" = 'https://eth-mainnet.g.alchemy.com/v2/your-key',
+  "contractAddress" = '0x...'
+WHERE name = 'StomaTrade';
+```
+
+#### 💡 Future Enhancements
+
+- Support multiple AppProjects for different chains
+- Add RPC health check & automatic failover
+- RPC URL rotation for load balancing
+- Network-specific gas price configurations
+
+---
+
 *Last Updated: January 2026*
 

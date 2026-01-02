@@ -416,6 +416,7 @@ model AppProject {
   chainId         String // e.g. "eip155:84532"
   contractAddress String
   abi             String // simpan sebagai JSON string
+  rpcUrl          String // RPC endpoint URL
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   deleted         Boolean  @default(false)
