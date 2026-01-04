@@ -64,6 +64,30 @@ export class ProjectSubmissionsService {
       );
     }
 
+    // Update project table dengan totalKilos, profitPerKillos, dan profitShare jika disediakan
+    const updateProjectData: any = {};
+
+    if (dto.totalKilos !== undefined) {
+      updateProjectData.totalKilos = parseFloat(dto.totalKilos);
+    }
+
+    if (dto.profitPerKillos !== undefined) {
+      updateProjectData.profitPerKillos = parseFloat(dto.profitPerKillos);
+    }
+
+    if (dto.sharedProfit !== undefined) {
+      updateProjectData.profitShare = dto.sharedProfit;
+    }
+
+    // Update project jika ada data yang perlu di-update
+    if (Object.keys(updateProjectData).length > 0) {
+      await this.prisma.project.update({
+        where: { id: dto.projectId },
+        data: updateProjectData,
+      });
+      this.logger.log(`Project updated with submission data: ${JSON.stringify(updateProjectData)}`);
+    }
+
     const submission = await this.prisma.projectSubmission.create({
       data: {
         projectId: dto.projectId,

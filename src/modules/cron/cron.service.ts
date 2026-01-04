@@ -16,6 +16,15 @@ export class CronService {
     private readonly providerService: EthersProviderService,
   ) {}
 
+  /**
+   * Helper to serialize event args containing BigInt values
+   */
+  private serializeEventArgs(args: any): string {
+    return JSON.stringify(args, (key, value) =>
+      typeof value === 'bigint' ? value.toString() : value
+    );
+  }
+
   @Cron(CronExpression.EVERY_HOUR)
   async recalculatePortfolios() {
     this.logger.log('Starting scheduled portfolio recalculation...');
@@ -230,11 +239,11 @@ export class CronService {
 
   private async handleProjectCreatedEvent(event: any) {
     const { args, transactionHash, blockNumber } = event;
-    
+
     const existing = await this.prisma.blockchainTransaction.findUnique({
       where: { transactionHash },
     });
-    
+
     if (existing) return;
 
     await this.prisma.blockchainTransaction.create({
@@ -244,7 +253,7 @@ export class CronService {
         status: 'CONFIRMED',
         fromAddress: args.owner || '',
         blockNumber,
-        eventData: JSON.stringify(args),
+        eventData: this.serializeEventArgs(args),
       },
     });
   }
@@ -265,18 +274,18 @@ export class CronService {
         status: 'CONFIRMED',
         fromAddress: args.farmer || '',
         blockNumber,
-        eventData: JSON.stringify(args),
+        eventData: this.serializeEventArgs(args),
       },
     });
   }
 
   private async handleInvestedEvent(event: any) {
     const { args, transactionHash, blockNumber } = event;
-    
+
     const existing = await this.prisma.blockchainTransaction.findUnique({
       where: { transactionHash },
     });
-    
+
     if (existing) return;
 
     await this.prisma.blockchainTransaction.create({
@@ -286,18 +295,18 @@ export class CronService {
         status: 'CONFIRMED',
         fromAddress: args.investor || '',
         blockNumber,
-        eventData: JSON.stringify(args),
+        eventData: this.serializeEventArgs(args),
       },
     });
   }
 
   private async handleProfitDepositedEvent(event: any) {
     const { args, transactionHash, blockNumber } = event;
-    
+
     const existing = await this.prisma.blockchainTransaction.findUnique({
       where: { transactionHash },
     });
-    
+
     if (existing) return;
 
     await this.prisma.blockchainTransaction.create({
@@ -307,18 +316,18 @@ export class CronService {
         status: 'CONFIRMED',
         fromAddress: '',
         blockNumber,
-        eventData: JSON.stringify(args),
+        eventData: this.serializeEventArgs(args),
       },
     });
   }
 
   private async handleProfitClaimedEvent(event: any) {
     const { args, transactionHash, blockNumber } = event;
-    
+
     const existing = await this.prisma.blockchainTransaction.findUnique({
       where: { transactionHash },
     });
-    
+
     if (existing) return;
 
     await this.prisma.blockchainTransaction.create({
@@ -328,18 +337,18 @@ export class CronService {
         status: 'CONFIRMED',
         fromAddress: args.user || '',
         blockNumber,
-        eventData: JSON.stringify(args),
+        eventData: this.serializeEventArgs(args),
       },
     });
   }
 
   private async handleRefundedEvent(event: any) {
     const { args, transactionHash, blockNumber } = event;
-    
+
     const existing = await this.prisma.blockchainTransaction.findUnique({
       where: { transactionHash },
     });
-    
+
     if (existing) return;
 
     await this.prisma.blockchainTransaction.create({
@@ -349,7 +358,7 @@ export class CronService {
         status: 'CONFIRMED',
         fromAddress: args.investor || '',
         blockNumber,
-        eventData: JSON.stringify(args),
+        eventData: this.serializeEventArgs(args),
       },
     });
   }

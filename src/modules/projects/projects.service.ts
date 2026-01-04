@@ -15,11 +15,13 @@ export class ProjectsService {
   constructor(private prisma: PrismaService) { }
 
   async create(createProjectDto: CreateProjectDto): Promise<ProjectResponseDto> {
-    const { sendDate, ...rest } = createProjectDto;
+    const { sendDate, volume, ...rest } = createProjectDto;
 
     const res = await this.prisma.project.create({
       data: {
         ...rest,
+        volume,
+        totalKilos: volume, // Set totalKilos sama dengan volume
         sendDate: new Date(sendDate),
       },
     });

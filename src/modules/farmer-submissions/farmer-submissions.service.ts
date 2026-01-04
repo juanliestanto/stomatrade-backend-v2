@@ -150,7 +150,19 @@ export class FarmerSubmissionsService {
       });
 
       const primaryFile = farmerFiles.find(f => f.type.startsWith('image/')) || farmerFiles[0];
-      const cid = primaryFile?.url ? this.extractCID(primaryFile.url) : '';
+      let cid = primaryFile?.url ? this.extractCID(primaryFile.url) : '';
+
+      // Validate CID - smart contract requires non-empty CID
+      if (!cid || cid.trim() === '') {
+        // Use placeholder CID for metadata
+        // This is a valid IPFS CID hash pointing to empty/placeholder content
+        cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn';
+        this.logger.warn(
+          `No valid CID found for farmer ${submission.farmerId}, using placeholder CID`,
+        );
+      }
+
+      this.logger.log(`Using CID: ${cid} for Farmer NFT`);
 
       const txResult = await this.stomaTradeContract.addFarmer(
         cid,
@@ -188,7 +200,7 @@ export class FarmerSubmissionsService {
             });
 
           if (parsed) {
-            mintedTokenId = Number(parsed.args.nftId);
+            mintedTokenId = Number(parsed.args.idFarmer);
             this.logger.log(`Farmer NFT added with token ID: ${mintedTokenId}`);
           }
         }
