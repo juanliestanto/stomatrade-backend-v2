@@ -58,9 +58,13 @@ export class TransactionService {
         // Get current gas price with EIP-1559 support
         const feeData = await this.providerService.getProvider().getFeeData();
 
+        // Get wallet address for 'from' field
+        const walletAddress = this.walletService.getAddress();
+
         // Prepare transaction with gas settings
         const txRequest: ethers.TransactionRequest = {
           ...transaction,
+          from: walletAddress, // CRITICAL: Set from address for estimateGas
           maxFeePerGas: feeData.maxFeePerGas,
           maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
         };

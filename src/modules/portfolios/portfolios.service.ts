@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PortfolioDetailResponseDto } from './dto/portfolio-detail-response.dto';
+import { PortfolioResponseDto } from './dto/portfolio-response.dto';
+import { PortfolioInvestmentItemDto } from './dto/portfolio-investment-item.dto';
 
 @Injectable()
 export class PortfoliosService {
@@ -8,7 +10,7 @@ export class PortfoliosService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async getUserPortfolio(userId: string) {
+  async getUserPortfolio(userId: string): Promise<PortfolioResponseDto> {
     this.logger.log(`Getting portfolio for user ${userId}`);
 
     const user = await this.prisma.user.findUnique({
@@ -75,6 +77,14 @@ export class PortfoliosService {
             ? Number((claimedProfit * BigInt(10000)) / investmentAmount) / 100
             : 0;
 
+        // Calculate returnAsset and cumulativeAsset
+        const returnAsset =
+          investmentAmount > BigInt(0)
+            ? ((investmentAmount * BigInt(Math.floor(margin * 100))) / BigInt(10000)).toString()
+            : '0';
+
+        const cumulativeAsset = (investmentAmount + BigInt(returnAsset)).toString();
+
         return {
           id: inv.id,
           projectId: inv.projectId,
@@ -88,6 +98,8 @@ export class PortfoliosService {
           fundingPrice,
           totalFunding,
           margin,
+          returnAsset,
+          cumulativeAsset,
         };
       }),
     };

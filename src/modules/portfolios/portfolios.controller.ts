@@ -10,6 +10,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { PortfoliosService } from './portfolios.service';
 import { PortfolioDetailResponseDto } from './dto/portfolio-detail-response.dto';
+import { PortfolioResponseDto } from './dto/portfolio-response.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { ROLES } from '@prisma/client';
@@ -111,11 +112,12 @@ export class PortfoliosController {
   @Get('user/:userId')
   @ApiOperation({
     summary: 'Get user portfolio (authenticated users)',
-    description: 'Retrieve investment portfolio for a specific user',
+    description: 'Retrieve investment portfolio for a specific user including returnAsset and cumulativeAsset for each investment',
   })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'User portfolio retrieved successfully',
+    type: PortfolioResponseDto,
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
@@ -125,7 +127,7 @@ export class PortfoliosController {
     status: HttpStatus.UNAUTHORIZED,
     description: 'Authentication required',
   })
-  getUserPortfolio(@Param('userId', ParseUUIDPipe) userId: string) {
+  getUserPortfolio(@Param('userId', ParseUUIDPipe) userId: string): Promise<PortfolioResponseDto> {
     return this.portfoliosService.getUserPortfolio(userId);
   }
 }

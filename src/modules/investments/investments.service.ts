@@ -76,9 +76,10 @@ export class InvestmentsService {
     try {
       const projectTokenId = BigInt(project.tokenId);
       const blockchainProject = await this.stomaTradeContract.getProject(projectTokenId);
+      
+      const status = Number(blockchainProject.status);
 
-      // Check if project is ACTIVE (status 0 = ACTIVE)
-      if (blockchainProject.status !== 0) {
+      if (status !== 0) {
         throw new BadRequestException(
           `Project is not active on blockchain (status: ${blockchainProject.status})`,
         );
