@@ -19,8 +19,23 @@ export class ProfitsService {
     private readonly stomaTradeContract: StomaTradeContractService,
   ) {}
 
+  /**
+   * @deprecated Misleading method name. This actually calls withdrawProject() on the smart contract.
+   *
+   * IMPORTANT: Despite the name "depositProfit", this method actually withdraws project funds
+   * from the blockchain after project completion. The naming confusion comes from the business
+   * logic perspective (depositing to profit pool) vs blockchain operation (withdrawing from project).
+   *
+   * What this method does:
+   * 1. Calls withdrawProject() on smart contract (NOT deposit!)
+   * 2. Creates/updates profitPool record in database
+   * 3. Tracks withdrawn funds as "deposited" to profit pool
+   *
+   * For new code, use ProjectsService.withdrawProjectFunds() instead.
+   * This method is maintained for backward compatibility only.
+   */
   async depositProfit(dto: DepositProfitDto) {
-    this.logger.log(`Depositing profit for project ${dto.projectId}`);
+    this.logger.log(`[DEPRECATED] Withdrawing project funds for project ${dto.projectId}`);
 
     const project = await this.prisma.project.findUnique({
       where: { id: dto.projectId },
@@ -43,9 +58,10 @@ export class ProfitsService {
       const amountInWei = toWei(dto.amount);
 
       this.logger.log(
-        `Calling blockchain withdrawProject() - ProjectId: ${projectTokenId}`,
+        `⚠️ Calling blockchain withdrawProject() (not deposit!) - ProjectId: ${projectTokenId}`,
       );
 
+      // IMPORTANT: Despite method name, this calls withdrawProject()!
       const txResult = await this.stomaTradeContract.withdrawProject(
         projectTokenId,
       );
@@ -98,6 +114,11 @@ export class ProfitsService {
     }
   }
 
+  /**
+   * Note: This method calls claimWithdraw() on the smart contract.
+   * The method name "claimProfit" is kept for business logic clarity and backward compatibility.
+   * It represents the user-facing action (claiming profit) which maps to claimWithdraw() on chain.
+   */
   async claimProfit(dto: ClaimProfitDto) {
     this.logger.log(
       `User ${dto.userId} claiming profit from project ${dto.projectId}`,

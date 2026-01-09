@@ -181,6 +181,9 @@ model Project {
   profitPerKillos   Float?
   sendDate          DateTime
   status            PROJECT_STATUS     @default(ACTIVE)
+  chainId           String?            // e.g. "eip155:4202" (copied from AppProject at mint time)
+  contractAddress   String?            // Smart contract address (copied from AppProject at mint time)
+  explorerUrl       String?            // Block explorer base URL (copied from AppProject at mint time)
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   deleted           Boolean            @default(false)
@@ -413,10 +416,11 @@ model AppProject {
   id              String   @id @default(cuid())
   name            String
   description     String
-  chainId         String // e.g. "eip155:84532"
+  chainId         String // e.g. "eip155:84532" (CAIP-2 format)
   contractAddress String
   abi             String // simpan sebagai JSON string
   rpcUrl          String // RPC endpoint URL
+  explorerUrl     String // Block explorer base URL (e.g. "https://sepolia-blockscout.lisk.com")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   deleted         Boolean  @default(false)

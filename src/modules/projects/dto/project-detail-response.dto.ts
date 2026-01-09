@@ -112,4 +112,32 @@ export class ProjectDetailResponseDto {
     nullable: true,
   })
   gradeQuality: string | null;
+
+  @ApiProperty({
+    description: 'Blockchain NFT token ID',
+    example: 4,
+    nullable: true,
+  })
+  tokenId?: number | null;
+
+  @ApiProperty({
+    description: 'Chain ID in CAIP-2 format',
+    example: 'eip155:4202',
+    nullable: true,
+  })
+  chainId?: string | null;
+
+  @ApiProperty({
+    description: 'Smart contract address',
+    example: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
+    nullable: true,
+  })
+  contractAddress?: string | null;
+
+  @ApiProperty({
+    description: 'Block explorer NFT URL',
+    example: 'https://sepolia-blockscout.lisk.com/nft/0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb/4',
+    nullable: true,
+  })
+  explorerNftUrl?: string | null;
 }

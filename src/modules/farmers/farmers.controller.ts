@@ -26,6 +26,7 @@ import {
   PaginatedFarmerResponseDto,
 } from './dto/farmer-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchQueryDto } from '../../common/dto/search-query.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { ROLES } from '@prisma/client';
 
@@ -68,7 +69,7 @@ export class FarmersController {
   @Get()
   @ApiOperation({
     summary: 'Get all farmers (Staff/Admin only)',
-    description: 'Retrieve paginated list of all farmers',
+    description: 'Retrieve paginated list of all farmers with optional search',
   })
   @ApiQuery({
     name: 'page',
@@ -82,6 +83,12 @@ export class FarmersController {
     type: Number,
     description: 'Items per page (default: 10)',
   })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Search term (searches name, NIK, address, collector name)',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Farmers retrieved successfully',
@@ -91,8 +98,8 @@ export class FarmersController {
     status: HttpStatus.FORBIDDEN,
     description: 'Insufficient permissions',
   })
-  findAll(@Query() pagination: PaginationDto): Promise<PaginatedFarmerResponseDto> {
-    return this.farmersService.findAll(pagination);
+  findAll(@Query() query: SearchQueryDto): Promise<PaginatedFarmerResponseDto> {
+    return this.farmersService.findAll(query);
   }
 
   @Get('collector/:collectorId')

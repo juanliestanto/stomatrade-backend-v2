@@ -8,6 +8,27 @@ export class ProjectResponseDto {
     nullable: true,})
   tokenId: number | null;
 
+  @ApiProperty({
+    description: 'Chain ID in CAIP-2 format',
+    example: 'eip155:5001',
+    nullable: true,
+  })
+  chainId?: string | null;
+
+  @ApiProperty({
+    description: 'Smart contract address',
+    example: '0x08A2cefa99A8848cD3aC34620f49F115587dcE28',
+    nullable: true,
+  })
+  contractAddress?: string | null;
+
+  @ApiProperty({
+    description: 'Block explorer NFT URL',
+    example: 'https://sepolia.mantlescan.xyz/nft/0x08A2cefa99A8848cD3aC34620f49F115587dcE28/4',
+    nullable: true,
+  })
+  explorerNftUrl?: string | null;
+
   @ApiProperty({example: '550e8400-e29b-41d4-a716-446655440000',})
   collectorId: string;
 

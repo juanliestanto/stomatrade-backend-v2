@@ -38,8 +38,11 @@ describe('PortfoliosService', () => {
       investedAt: new Date(),
       project: {
         commodity: 'Rice',
+        totalKilos: 1000,
+        volume: 500000,
         farmer: { name: 'Farmer 1' },
         land: { address: 'Land 1' },
+        collector: { name: 'Collector 1' },
       },
       profitClaims: [{ amount: '10000000000000000000' }],
     },
@@ -52,8 +55,11 @@ describe('PortfoliosService', () => {
       investedAt: new Date(),
       project: {
         commodity: 'Coffee',
+        totalKilos: 2000,
+        volume: 800000,
         farmer: { name: 'Farmer 2' },
         land: { address: 'Land 2' },
+        collector: { name: 'Collector 2' },
       },
       profitClaims: [],
     },
@@ -85,6 +91,10 @@ describe('PortfoliosService', () => {
       prisma.user.findUnique.mockResolvedValue(mockUser);
       prisma.investmentPortfolio.findUnique.mockResolvedValue(mockPortfolio);
       prisma.investment.findMany.mockResolvedValue(mockInvestments);
+      prisma.file.findMany.mockResolvedValue([
+        { reffId: 'project-1', url: 'https://example.com/image1.jpg' },
+        { reffId: 'project-2', url: 'https://example.com/image2.jpg' },
+      ]);
 
       const result = await service.getUserPortfolio('user-uuid-1');
 
@@ -114,6 +124,7 @@ describe('PortfoliosService', () => {
         activeInvestments: 0,
       });
       prisma.investment.findMany.mockResolvedValue([]);
+      prisma.file.findMany.mockResolvedValue([]);
 
       const result = await service.getUserPortfolio('user-uuid-1');
 

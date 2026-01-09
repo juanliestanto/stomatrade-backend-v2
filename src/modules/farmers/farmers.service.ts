@@ -4,7 +4,8 @@ import { CreateFarmerDto } from './dto/create-farmer.dto';
 import { UpdateFarmerDto } from './dto/update-farmer.dto';
 import { FarmerResponseDto } from './dto/farmer-response.dto';
 import { PaginatedResponseDto, PaginationDto } from '../../common/dto/pagination.dto';
-import { retry } from 'rxjs';
+import { SearchQueryDto } from '../../common/dto/search-query.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class FarmersService {
@@ -25,18 +26,34 @@ export class FarmersService {
     
   }
 
-  async findAll(pagination: PaginationDto): Promise<PaginatedResponseDto<FarmerResponseDto>> {
-    const { page = 1, limit = 10 } = pagination;
+  async findAll(query: SearchQueryDto): Promise<PaginatedResponseDto<FarmerResponseDto>> {
+    const { page = 1, limit = 10, search } = query;
     const skip = (page - 1) * limit;
+
+    // Build where clause with search functionality
+    const where: Prisma.FarmerWhereInput = {
+      deleted: false,
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { nik: { contains: search, mode: 'insensitive' } },
+          { address: { contains: search, mode: 'insensitive' } },
+          { collector: { name: { contains: search, mode: 'insensitive' } } },
+        ],
+      }),
+    };
 
     const [data, total] = await Promise.all([
       this.prisma.farmer.findMany({
-        where: { deleted: false },
+        where,
+        include: {
+          collector: true,
+        },
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.farmer.count({ where: { deleted: false } }),
+      this.prisma.farmer.count({ where }),
     ]);
 
     return new PaginatedResponseDto(data, total, page, limit);

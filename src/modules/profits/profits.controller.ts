@@ -19,16 +19,24 @@ import { ROLES } from '@prisma/client';
 export class ProfitsController {
   constructor(private readonly profitsService: ProfitsService) {}
 
+  /**
+   * @deprecated This endpoint is misleading. It actually calls withdrawProject() on the smart contract.
+   * Use POST /projects/:id/withdraw-funds instead for clearer semantics.
+   * This endpoint is maintained for backward compatibility only.
+   */
   @Roles(ROLES.ADMIN)
   @Post('deposit')
   @ApiOperation({
-    summary: 'Deposit profit for a project (Admin only)',
+    summary: '[DEPRECATED] Withdraw project funds (Admin only)',
     description:
-      'Admin deposits profit to blockchain for distribution to investors',
+      '⚠️ DEPRECATED: This endpoint name is misleading. It actually calls withdrawProject() on the smart contract, ' +
+      'which withdraws project funds from blockchain after project completion. ' +
+      'Use POST /projects/:id/withdraw-funds instead for clearer semantics. ' +
+      'This endpoint is maintained for backward compatibility only.',
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
-    description: 'Profit deposited successfully on blockchain',
+    description: 'Project funds withdrawn successfully from blockchain',
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
@@ -46,11 +54,16 @@ export class ProfitsController {
     return this.profitsService.depositProfit(dto);
   }
 
+  /**
+   * Note: This endpoint calls claimWithdraw() on the smart contract.
+   * The naming is kept for backward compatibility and business logic clarity.
+   */
   @Post('claim')
   @ApiOperation({
     summary: 'Claim profit from a project (authenticated users)',
     description:
-      'Investor claims their proportional profit from blockchain',
+      'Investor claims their proportional profit from blockchain. ' +
+      'Note: This calls claimWithdraw() on the smart contract.',
   })
   @ApiResponse({
     status: HttpStatus.CREATED,

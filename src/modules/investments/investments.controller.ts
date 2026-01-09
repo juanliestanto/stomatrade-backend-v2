@@ -6,6 +6,7 @@ import {
   Param,
   Query,
   HttpStatus,
+  HttpCode,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { InvestmentsService } from './investments.service';
@@ -84,16 +85,54 @@ export class InvestmentsController {
     return this.investmentsService.findAll(userId, projectId);
   }
 
+  /**
+   * @deprecated Using GET for state-changing operation violates REST principles.
+   * Use POST /investments/portfolio/recalculate instead.
+   * This endpoint is maintained for backward compatibility only.
+   */
   @Roles(ROLES.ADMIN)
   @Get('portfolio/recalculate')
   @ApiOperation({
-    summary: 'Recalculate all user portfolios (Admin only)',
+    summary: '[DEPRECATED] Recalculate all user portfolios (Admin only)',
     description:
+      '⚠️ DEPRECATED: This endpoint uses GET method for a state-changing operation, which violates REST principles. ' +
+      'Use POST /investments/portfolio/recalculate instead. ' +
+      'This endpoint is maintained for backward compatibility only.\n\n' +
       'Manually trigger portfolio recalculation for all users (typically called by cron job)',
   })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Portfolios recalculated successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Admin access required',
+  })
+  recalculatePortfoliosDeprecated() {
+    return this.investmentsService.recalculateAllPortfolios();
+  }
+
+  @Roles(ROLES.ADMIN)
+  @Post('portfolio/recalculate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Recalculate all user portfolios (Admin only)',
+    description:
+      'Manually trigger portfolio recalculation for all users. ' +
+      'This operation updates portfolio statistics and investment calculations. ' +
+      'Typically called by cron job or manual admin intervention.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Portfolios recalculated successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'All portfolios recalculated successfully' },
+        portfoliosUpdated: { type: 'number', example: 150 },
+      },
+    },
   })
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,

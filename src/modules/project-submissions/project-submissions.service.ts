@@ -21,9 +21,6 @@ export class ProjectSubmissionsService {
     private readonly stomaTradeContract: StomaTradeContractService,
   ) {}
 
-  /**
-   * Extract CID from various IPFS URL formats
-   */
   private extractCID(url: string): string {
     if (!url) return '';
 
@@ -64,7 +61,6 @@ export class ProjectSubmissionsService {
       );
     }
 
-    // Update project table dengan totalKilos, profitPerKillos, dan profitShare jika disediakan
     const updateProjectData: any = {};
 
     if (dto.totalKilos !== undefined) {
@@ -79,7 +75,6 @@ export class ProjectSubmissionsService {
       updateProjectData.profitShare = dto.sharedProfit;
     }
 
-    // Update project jika ada data yang perlu di-update
     if (Object.keys(updateProjectData).length > 0) {
       await this.prisma.project.update({
         where: { id: dto.projectId },
@@ -190,7 +185,6 @@ export class ProjectSubmissionsService {
         `Minting Project NFT - Value: ${submission.valueProject}, MaxCrowdFunding: ${submission.maxCrowdFunding}, CID: ${submission.metadataCid || 'none'}`,
       );
 
-      // Get project files for CID
       const projectFiles = await this.prisma.file.findMany({
         where: { reffId: submission.project.id },
       });
@@ -198,7 +192,6 @@ export class ProjectSubmissionsService {
       const primaryFile = projectFiles.find(f => f.type.startsWith('image/')) || projectFiles[0];
       const cid = primaryFile?.url ? this.extractCID(primaryFile.url) : (submission.metadataCid || '');
 
-      // Convert amount bersih ke wei untuk blockchain
       const valueProject = toWei(submission.valueProject);
       const maxCrowdFunding = toWei(submission.maxCrowdFunding);
       const totalKilos = toWei(submission.project.totalKilos || '0');
@@ -271,12 +264,48 @@ export class ProjectSubmissionsService {
       });
 
       if (mintedTokenId !== null) {
+        const appProject = await this.prisma.appProject.findFirst({
+          where: {
+            name: 'StomaTrade',
+            deleted: false,
+          },
+        });
+
+        if (!appProject) {
+          this.logger.error('AppProject configuration not found in database');
+          throw new BadRequestException(
+            'AppProject configuration not found. Cannot mint project without blockchain chain configuration.',
+          );
+        }
+
+        const missingFields: string[] = [];
+        if (!appProject.chainId) missingFields.push('chainId');
+        if (!appProject.contractAddress) missingFields.push('contractAddress');
+        if (!appProject.explorerUrl) missingFields.push('explorerUrl');
+
+        if (missingFields.length > 0) {
+          this.logger.error('AppProject has incomplete configuration', {
+            missingFields,
+            appProjectId: appProject.id,
+          });
+          throw new BadRequestException(
+            `AppProject has incomplete blockchain configuration. Missing fields: ${missingFields.join(', ')}`,
+          );
+        }
+
         await this.prisma.project.update({
           where: { id: submission.projectId },
           data: {
             tokenId: mintedTokenId,
+            chainId: appProject.chainId,
+            contractAddress: appProject.contractAddress,
+            explorerUrl: appProject.explorerUrl,
           },
         });
+
+        this.logger.log(
+          `Project updated with tokenId: ${mintedTokenId}, chainId: ${appProject.chainId}, contract: ${appProject.contractAddress}`,
+        );
       }
 
       this.logger.log(`Project submission approved and minted: ${id}`);

@@ -26,7 +26,6 @@ export class PortfoliosService {
     });
 
     if (!portfolio) {
-      
       portfolio = await this.prisma.investmentPortfolio.create({
         data: {
           userId,
@@ -47,6 +46,7 @@ export class PortfoliosService {
           include: {
             farmer: true,
             land: true,
+            collector: true,
           },
         },
         profitClaims: true,
@@ -54,6 +54,23 @@ export class PortfoliosService {
       orderBy: {
         investedAt: 'desc',
       },
+    });
+
+    const projectIds = investments.map(inv => inv.projectId);
+    const projectImages = await this.prisma.file.findMany({
+      where: {
+        reffId: { in: projectIds },
+        deleted: false,
+      },
+      orderBy: { createdAt: 'desc' },
+      distinct: ['reffId'],
+    });
+
+    const imageMap = new Map<string, string>();
+    projectImages.forEach(file => {
+      if (!imageMap.has(file.reffId)) {
+        imageMap.set(file.reffId, file.url);
+      }
     });
 
     return {
@@ -77,7 +94,6 @@ export class PortfoliosService {
             ? Number((claimedProfit * BigInt(10000)) / investmentAmount) / 100
             : 0;
 
-        // Calculate returnAsset and cumulativeAsset
         const returnAsset =
           investmentAmount > BigInt(0)
             ? ((investmentAmount * BigInt(Math.floor(margin * 100))) / BigInt(10000)).toString()
@@ -90,6 +106,8 @@ export class PortfoliosService {
           projectId: inv.projectId,
           projectName: inv.project.commodity,
           farmerName: inv.project.farmer.name,
+          collectorName: inv.project.collector.name,
+          image: imageMap.get(inv.projectId) || null,
           amount: inv.amount,
           receiptTokenId: inv.receiptTokenId,
           investedAt: inv.investedAt,
@@ -204,7 +222,7 @@ export class PortfoliosService {
       gradeQuality: null,
       assets: assets,
       returnRate: Math.round(returnRate * 100) / 100,
-      return: totalReturn.toString(),
+      returnAsset: totalReturn.toString(),
       cumulativeAsset: cumulativeAsset,
     };
   }

@@ -17,6 +17,7 @@ import {
   ApiQuery,
   ApiParam,
   ApiBearerAuth,
+  ApiBody,
 } from '@nestjs/swagger';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -27,7 +28,10 @@ import {
 } from './dto/project-response.dto';
 import { ProjectListResponseDto } from './dto/project-list-response.dto';
 import { ProjectDetailResponseDto } from './dto/project-detail-response.dto';
+import { ClaimRefundDto } from './dto/claim-refund.dto';
+import { TransactionResponseDto } from './dto/transaction-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchQueryDto } from '../../common/dto/search-query.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { ROLES } from '@prisma/client';
@@ -96,7 +100,7 @@ export class ProjectsController {
   @Get()
   @ApiOperation({
     summary: 'Get all projects (Public)',
-    description: 'Retrieve paginated list of all agricultural projects',
+    description: 'Retrieve paginated list of all agricultural projects with optional search',
   })
   @ApiQuery({
     name: 'page',
@@ -110,13 +114,19 @@ export class ProjectsController {
     type: Number,
     description: 'Items per page (default: 10)',
   })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Search term (searches name, commodity, farmer name, collector name)',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Projects retrieved successfully',
     type: PaginatedProjectResponseDto,
   })
-  findAll(@Query() pagination: PaginationDto): Promise<PaginatedProjectResponseDto> {
-    return this.projectsService.findAll(pagination);
+  findAll(@Query() query: SearchQueryDto): Promise<PaginatedProjectResponseDto> {
+    return this.projectsService.findAll(query);
   }
 
   @Get('farmer/:farmerId')
@@ -269,5 +279,168 @@ export class ProjectsController {
   })
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<ProjectResponseDto> {
     return this.projectsService.remove(id);
+  }
+
+  // ============ LIFECYCLE MANAGEMENT ENDPOINTS ============
+
+  @Roles(ROLES.ADMIN)
+  @Post(':id/close')
+  @ApiOperation({
+    summary: 'Close project crowdfunding (Admin only)',
+    description: 'Close crowdfunding period, preventing new investments',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Project UUID',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Project closed successfully',
+    type: TransactionResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Project not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Project not minted or already closed',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Admin access required',
+  })
+  closeProject(@Param('id', ParseUUIDPipe) id: string): Promise<TransactionResponseDto> {
+    return this.projectsService.closeProject(id);
+  }
+
+  @Roles(ROLES.ADMIN)
+  @Post(':id/finish')
+  @ApiOperation({
+    summary: 'Finish project (Admin only)',
+    description: 'Mark project as completed after harvest/production',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Project UUID',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Project finished successfully',
+    type: TransactionResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Project not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Project not minted or already finished',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Admin access required',
+  })
+  finishProject(@Param('id', ParseUUIDPipe) id: string): Promise<TransactionResponseDto> {
+    return this.projectsService.finishProject(id);
+  }
+
+  @Roles(ROLES.ADMIN)
+  @Post(':id/withdraw-funds')
+  @ApiOperation({
+    summary: 'Withdraw project funds (Admin only)',
+    description: 'Project owner withdraws raised crowdfunding proceeds',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Project UUID',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Project funds withdrawn successfully',
+    type: TransactionResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Project not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Project not minted or not in correct state',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Admin access required',
+  })
+  withdrawProjectFunds(@Param('id', ParseUUIDPipe) id: string): Promise<TransactionResponseDto> {
+    return this.projectsService.withdrawProjectFunds(id);
+  }
+
+  @Roles(ROLES.ADMIN)
+  @Post(':id/refund')
+  @ApiOperation({
+    summary: 'Enable refunds for failed project (Admin only)',
+    description: 'Mark project as failed, allowing investors to claim refunds',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Project UUID',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Project marked for refund successfully',
+    type: TransactionResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Project not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Project not minted or already in refunding state',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Admin access required',
+  })
+  refundProject(@Param('id', ParseUUIDPipe) id: string): Promise<TransactionResponseDto> {
+    return this.projectsService.refundProject(id);
+  }
+
+  @Post(':id/claim-refund')
+  @ApiOperation({
+    summary: 'Claim refund from failed project',
+    description: 'Investor claims refund for their investment in failed project',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Project UUID',
+  })
+  @ApiBody({
+    type: ClaimRefundDto,
+    description: 'User ID claiming the refund',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Refund claimed successfully',
+    type: TransactionResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Project not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Project not in refunding state or user has no investment',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Authentication required',
+  })
+  claimRefund(
+    @Param('id', ParseUUIDPipe) projectId: string,
+    @Body() dto: ClaimRefundDto,
+  ): Promise<TransactionResponseDto> {
+    return this.projectsService.claimRefund(projectId, dto.userId);
   }
 }

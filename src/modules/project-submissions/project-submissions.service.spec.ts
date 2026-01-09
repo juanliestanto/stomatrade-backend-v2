@@ -171,6 +171,14 @@ describe('ProjectSubmissionsService', () => {
         tokenId: 3001,
       });
       prisma.file.findMany.mockResolvedValue([]);
+      prisma.appProject.findFirst.mockResolvedValue({
+        id: 'app-project-1',
+        name: 'StomaTrade',
+        chainId: 'eip155:4202',
+        contractAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
+        explorerUrl: 'https://sepolia-blockscout.lisk.com',
+        deleted: false,
+      });
 
       contractService.createProject.mockResolvedValue({
         hash: '0xTxHash',
@@ -199,6 +207,97 @@ describe('ProjectSubmissionsService', () => {
 
       expect(contractService.createProject).toHaveBeenCalled();
       expect(result.status).toBe(SUBMISSION_STATUS.MINTED);
+    });
+
+    it('should throw BadRequestException if AppProject not found', async () => {
+      const approvedSubmission = {
+        ...mockSubmission,
+        status: SUBMISSION_STATUS.APPROVED,
+        approvedBy: '0xAdminWallet',
+      };
+
+      prisma.projectSubmission.findUnique.mockResolvedValue(mockSubmission);
+      prisma.projectSubmission.update.mockResolvedValueOnce(approvedSubmission);
+      prisma.blockchainTransaction.create.mockResolvedValue({
+        id: 'tx-uuid-1',
+        transactionHash: '0xTxHash',
+      });
+      prisma.file.findMany.mockResolvedValue([]);
+      prisma.appProject.findFirst.mockResolvedValue(null); // AppProject not found
+
+      contractService.createProject.mockResolvedValue({
+        hash: '0xTxHash',
+        receipt: { status: 1, logs: [] },
+        success: true,
+        blockNumber: 12345678,
+      });
+      contractService.getContract.mockReturnValue({
+        runner: { address: '0xPlatformAddress' },
+        interface: {
+          parseLog: jest.fn().mockReturnValue({
+            name: 'ProjectCreated',
+            args: { projectId: BigInt(3001) },
+          }),
+        },
+      });
+      contractService.getEventFromReceipt.mockReturnValue({
+        topics: ['0xtopic1'],
+        data: '0xdata',
+      });
+      contractService.getSignerAddress.mockReturnValue('0xPlatformAddress');
+
+      await expect(
+        service.approve('submission-uuid-1', { approvedBy: '0xAdmin' }),
+      ).rejects.toThrow('AppProject configuration not found');
+    });
+
+    it('should throw BadRequestException if AppProject has incomplete data', async () => {
+      const approvedSubmission = {
+        ...mockSubmission,
+        status: SUBMISSION_STATUS.APPROVED,
+        approvedBy: '0xAdminWallet',
+      };
+
+      prisma.projectSubmission.findUnique.mockResolvedValue(mockSubmission);
+      prisma.projectSubmission.update.mockResolvedValueOnce(approvedSubmission);
+      prisma.blockchainTransaction.create.mockResolvedValue({
+        id: 'tx-uuid-1',
+        transactionHash: '0xTxHash',
+      });
+      prisma.file.findMany.mockResolvedValue([]);
+      prisma.appProject.findFirst.mockResolvedValue({
+        id: 'app-project-1',
+        name: 'StomaTrade',
+        chainId: null, // Missing chainId
+        contractAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
+        explorerUrl: 'https://sepolia-blockscout.lisk.com',
+        deleted: false,
+      });
+
+      contractService.createProject.mockResolvedValue({
+        hash: '0xTxHash',
+        receipt: { status: 1, logs: [] },
+        success: true,
+        blockNumber: 12345678,
+      });
+      contractService.getContract.mockReturnValue({
+        runner: { address: '0xPlatformAddress' },
+        interface: {
+          parseLog: jest.fn().mockReturnValue({
+            name: 'ProjectCreated',
+            args: { projectId: BigInt(3001) },
+          }),
+        },
+      });
+      contractService.getEventFromReceipt.mockReturnValue({
+        topics: ['0xtopic1'],
+        data: '0xdata',
+      });
+      contractService.getSignerAddress.mockReturnValue('0xPlatformAddress');
+
+      await expect(
+        service.approve('submission-uuid-1', { approvedBy: '0xAdmin' }),
+      ).rejects.toThrow('AppProject has incomplete blockchain configuration');
     });
 
     it('should throw BadRequestException if already processed', async () => {

@@ -7,7 +7,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { StomaTradeContractService } from '../../blockchain/services/stomatrade-contract.service';
 import { MarkRefundableDto } from './dto/mark-refundable.dto';
-import { ClaimRefundDto } from './dto/claim-refund.dto';
+import { RefundClaimRequestDto } from './dto/claim-refund.dto';
 
 @Injectable()
 export class RefundsService {
@@ -39,7 +39,6 @@ export class RefundsService {
     }
 
     try {
-      
       const projectTokenId = BigInt(project.tokenId);
 
       this.logger.log(
@@ -87,7 +86,7 @@ export class RefundsService {
     }
   }
 
-  async claimRefund(dto: ClaimRefundDto) {
+  async claimRefund(dto: RefundClaimRequestDto) {
     this.logger.log(
       `User ${dto.userId} claiming refund from project ${dto.projectId}`,
     );
@@ -129,7 +128,6 @@ export class RefundsService {
     }
 
     try {
-      
       const projectTokenId = BigInt(project.tokenId);
 
       this.logger.log(
@@ -138,7 +136,7 @@ export class RefundsService {
 
       const txResult = await this.stomaTradeContract.claimRefund(projectTokenId);
 
-      let refundedAmount = investment.amount; 
+      let refundedAmount = investment.amount;
       if (txResult.receipt) {
         const refundedEvent = this.stomaTradeContract.getEventFromReceipt(
           txResult.receipt,
@@ -182,7 +180,7 @@ export class RefundsService {
       await this.prisma.investment.update({
         where: { id: investment.id },
         data: {
-          deleted: true, 
+          deleted: true,
         },
       });
 
@@ -211,7 +209,6 @@ export class RefundsService {
   }
 
   async getRefundableProjects() {
-    
     const projects = await this.prisma.project.findMany({
       where: {
         tokenId: { not: null },
@@ -266,7 +263,6 @@ export class RefundsService {
       },
     });
 
-    // Calculate dari amount bersih (sudah bersih di DB)
     const totalInvested = investments.reduce(
       (sum, inv) => sum + Number(inv.amount),
       0,

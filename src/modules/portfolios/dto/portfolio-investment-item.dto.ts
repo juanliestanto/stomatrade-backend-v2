@@ -13,6 +13,12 @@ export class PortfolioInvestmentItemDto {
   @ApiProperty({ description: 'Farmer name', example: 'Ahmad Hidayat' })
   farmerName: string;
 
+  @ApiProperty({ description: 'Collector name', example: 'PT Agro Sejahtera' })
+  collectorName: string;
+
+  @ApiProperty({ description: 'Project image URL', example: 'https://ipfs.io/ipfs/Qm...', nullable: true })
+  image: string | null;
+
   @ApiProperty({ description: 'Investment amount in IDRX wei', example: '100000' })
   amount: string;
 

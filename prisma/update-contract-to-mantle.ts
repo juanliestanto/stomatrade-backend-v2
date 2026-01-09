@@ -19,6 +19,7 @@ async function main() {
     contractAddress: '0x08A2cefa99A8848cD3aC34620f49F115587dcE28',
     abi: newAbi,
     rpcUrl: 'https://rpc.sepolia.mantle.xyz',
+    explorerUrl: 'https://sepolia.mantlescan.xyz',
   };
 
   // Check if record exists
@@ -36,6 +37,7 @@ async function main() {
         abi: mantleConfig.abi,
         description: mantleConfig.description,
         rpcUrl: mantleConfig.rpcUrl,
+        explorerUrl: mantleConfig.explorerUrl,
       },
     });
     console.log('✅ Updated successfully!');

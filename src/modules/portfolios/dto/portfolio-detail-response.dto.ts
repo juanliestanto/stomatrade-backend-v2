@@ -18,7 +18,7 @@ export class PortfolioDetailResponseDto extends ProjectDetailResponseDto {
     description: 'Total return/profit earned in IDRX',
     example: '250000',
   })
-  return: string;
+  returnAsset: string;
 
   @ApiProperty({
     description: 'Cumulative asset (assets + return) in IDRX',
